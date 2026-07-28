@@ -21,7 +21,7 @@ import { useAddresses } from "@/store/addresses";
 import { useAuth } from "@/store/auth";
 import { createOrderRecord } from "@/lib/orders.functions";
 import { getDeviceId } from "@/lib/device-id";
-import { BISTRO_AZUL_SLUG, restaurant } from "@/data/restaurant";
+import { restaurant } from "@/data/restaurant";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,6 +95,8 @@ function CheckoutPage() {
   const subtotal = useCart((s) => s.subtotal());
   const discount = useCart((s) => s.discount());
   const coupon = useCart((s) => s.coupon);
+  const cartRestaurantId = useCart((s) => s.restaurantId);
+  const cartRestaurantSlug = useCart((s) => s.restaurantSlug);
   const clear = useCart((s) => s.clear);
   const addresses = useAddresses((s) => s.addresses);
   const selectedId = useAddresses((s) => s.selectedId);
@@ -154,6 +156,12 @@ function CheckoutPage() {
 
   const placeOrder = async () => {
     if (!pickup && !selectedAddress) return toast.error("Escolha um endereço de entrega.");
+    if (!cartRestaurantId && !cartRestaurantSlug) {
+      toast.error("Restaurante não identificado", {
+        description: "Reabra o cardápio do restaurante e adicione os itens novamente.",
+      });
+      return;
+    }
     setPlacing(true);
     try {
       // Chave de idempotência: um mesmo carrinho/valor/pagamento no mesmo
@@ -178,11 +186,12 @@ function CheckoutPage() {
           pickup,
           payment,
           etaMinutes: etaMax,
-          restaurantId: restaurant.id,
-          restaurantSlug: BISTRO_AZUL_SLUG,
+          restaurantId: cartRestaurantId,
+          restaurantSlug: cartRestaurantSlug,
           idempotencyKey,
         },
       });
+
 
       const orderId = typeof order.id === "string" ? order.id : null;
       if (!orderId) throw new Error("Pedido criado sem identificador.");

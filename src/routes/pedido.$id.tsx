@@ -616,15 +616,18 @@ function FinishedOrderView({ order, canceled }: { order: OrderRow; canceled?: bo
 
   const repeat = () => {
     for (const it of order.items) {
-      addItem({
-        productId: it.productId,
-        name: it.name,
-        image: it.image,
-        basePrice: it.basePrice,
-        quantity: it.quantity,
-        note: it.note,
-        customizations: it.customizations ?? [],
-      });
+      addItem(
+        {
+          productId: it.productId,
+          name: it.name,
+          image: it.image,
+          basePrice: it.basePrice,
+          quantity: it.quantity,
+          note: it.note,
+          customizations: it.customizations ?? [],
+        },
+        { id: order.restaurant_id },
+      );
     }
     toast.success("Itens adicionados à sacola");
     nav({ to: "/carrinho" });

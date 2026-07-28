@@ -5,6 +5,7 @@ import { brl } from "@/lib/format";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { AdaptiveSheet } from "@/components/adaptive-sheet";
 import { useCart } from "@/store/cart";
+import { useActiveRestaurant } from "@/components/menu-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ProductBadgePill } from "@/components/product-badge";
@@ -20,6 +21,7 @@ type Props = {
 export function ProductSheet({ product, editingItem, onClose }: Props) {
   const addItem = useCart((s) => s.addItem);
   const updateItem = useCart((s) => s.updateItem);
+  const activeRestaurant = useActiveRestaurant();
   const open = !!product;
 
   const [selections, setSelections] = React.useState<Record<string, CartCustomization[]>>({});
@@ -90,15 +92,24 @@ export function ProductSheet({ product, editingItem, onClose }: Props) {
       updateItem(editingItem.id, { customizations: cs, quantity, note });
       toast.success("Item atualizado");
     } else {
-      addItem({
-        productId: product.id,
-        name: product.name,
-        image: product.image,
-        basePrice: product.price,
-        quantity,
-        note,
-        customizations: cs,
-      });
+      addItem(
+        {
+          productId: product.id,
+          name: product.name,
+          image: product.image,
+          basePrice: product.price,
+          quantity,
+          note,
+          customizations: cs,
+        },
+        activeRestaurant
+          ? {
+              id: activeRestaurant.id,
+              slug: activeRestaurant.slug,
+              name: activeRestaurant.name,
+            }
+          : undefined,
+      );
       toast.success("Adicionado ao carrinho");
     }
     onClose();
