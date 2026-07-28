@@ -1,5 +1,5 @@
 import * as React from "react";
-import { categories } from "@/data/menu";
+import { useMenu } from "@/components/menu-context";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
 };
 
 export function CategoryTabs({ activeId, onSelect }: Props) {
+  const { categories } = useMenu();
   const scroller = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
