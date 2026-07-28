@@ -95,6 +95,8 @@ function CheckoutPage() {
   const subtotal = useCart((s) => s.subtotal());
   const discount = useCart((s) => s.discount());
   const coupon = useCart((s) => s.coupon);
+  const cartRestaurantId = useCart((s) => s.restaurantId);
+  const cartRestaurantSlug = useCart((s) => s.restaurantSlug);
   const clear = useCart((s) => s.clear);
   const addresses = useAddresses((s) => s.addresses);
   const selectedId = useAddresses((s) => s.selectedId);
