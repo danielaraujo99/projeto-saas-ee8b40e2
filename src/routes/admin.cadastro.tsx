@@ -1,9 +1,11 @@
 import * as React from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/custom-supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createRestaurantSignup } from "@/lib/admin/restaurant-signup.functions";
 import { AdaptiveSheet } from "@/components/adaptive-sheet";
 import {
   Eye,
@@ -14,6 +16,7 @@ import {
   AlertTriangle,
   X,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,6 +79,7 @@ type SlugState =
 
 function SignupPage() {
   const nav = useNavigate();
+  const createRestaurant = useServerFn(createRestaurantSignup);
   const [name, setName] = React.useState("");
   const [restaurantName, setRestaurantName] = React.useState("");
   const [category, setCategory] = React.useState<string>("");
@@ -168,6 +172,17 @@ function SignupPage() {
 
   const cleanSlug = slugify(slug);
 
+  async function handleSwitchAccount() {
+    setBusy(true);
+    await supabase.auth.signOut();
+    setAuthedUserId(null);
+    setEmail("");
+    setPassword("");
+    setPassword2("");
+    setBusy(false);
+    nav({ to: "/admin/login", search: {}, replace: true });
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -232,33 +247,38 @@ function SignupPage() {
       }
     }
 
-    // 2) Cria o restaurante e vincula o usuário como admin (RPC SECURITY DEFINER).
-    const { error: rpcErr } = await supabase.rpc("create_restaurant_with_slug", {
-      _name: restaurantName,
-      _slug: cleanSlug,
-      _category: category,
-      _phone: phone,
-    });
-    setBusy(false);
-    if (rpcErr) {
-      const msg = rpcErr.message ?? "";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setBusy(false);
+      setError("Sua sessão expirou. Faça login e tente novamente.");
+      return;
+    }
+
+    // 2) Cria o restaurante e vincula o usuário como admin no servidor.
+    try {
+      await createRestaurant({
+        data: {
+          accessToken,
+          ownerName: name,
+          name: restaurantName,
+          slug: cleanSlug,
+          category,
+          phone,
+        },
+      });
+    } catch (err) {
+      setBusy(false);
+      const msg = err instanceof Error ? err.message : "";
       if (msg.includes("slug_taken")) {
         setError("Este link foi ocupado enquanto você preenchia. Escolha outro.");
         setSlugState({ kind: "taken", slug: cleanSlug });
         return;
       }
-      if (msg.includes("already_has_restaurant")) {
-        toast.success("Você já tem um restaurante vinculado. Redirecionando...");
-        nav({ to: "/admin", replace: true });
-        return;
-      }
-      if (msg.includes("not_authenticated")) {
-        setError("Sua sessão expirou. Faça login e tente novamente.");
-        return;
-      }
-      setError("Não foi possível criar o restaurante agora. Tente novamente em instantes.");
+      setError(msg || "Não foi possível criar o restaurante agora. Tente novamente em instantes.");
       return;
     }
+    setBusy(false);
     toast.success(`Restaurante criado! Seu link: menualtas.com.br/${cleanSlug}`);
     nav({ to: "/admin", replace: true });
   }
@@ -436,6 +456,16 @@ function SignupPage() {
                 <p className="text-[11px] text-slate-500">
                   Você já está autenticado. Só falta cadastrar o restaurante.
                 </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 w-full text-xs font-semibold"
+                  onClick={handleSwitchAccount}
+                  disabled={busy}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sair e entrar com outra conta
+                </Button>
               </div>
             ) : (
               <>

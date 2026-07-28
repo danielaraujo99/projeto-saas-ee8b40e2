@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, LogIn, Loader2, Store } from "lucide-react";
+import { Eye, EyeOff, LogIn, Loader2, LogOut, Store } from "lucide-react";
 import { toast } from "sonner";
 import loginBg from "@/assets/login-bg.mp4.asset.json";
 
@@ -33,18 +33,59 @@ function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [needsConfirm, setNeedsConfirm] = React.useState(false);
   const [resending, setResending] = React.useState(false);
+  const [checkingSession, setCheckingSession] = React.useState(true);
+  const [signedInEmail, setSignedInEmail] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) nav({ to: search.redirect || "/admin", replace: true });
-    });
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (cancelled) return;
+      if (!user) {
+        setCheckingSession(false);
+        return;
+      }
+
+      const { data: member } = await supabase
+        .from("restaurant_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (member) {
+        nav({ to: search.redirect || "/admin", replace: true });
+        return;
+      }
+
+      setSignedInEmail(user.email ?? "esta conta");
+      setEmail(user.email ?? "");
+      setCheckingSession(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [nav, search.redirect]);
+
+  async function signOutCurrent() {
+    setBusy(true);
+    await supabase.auth.signOut();
+    setSignedInEmail(null);
+    setPassword("");
+    setBusy(false);
+    toast.success("Sessão encerrada.");
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setNeedsConfirm(false);
     setBusy(true);
+    if (signedInEmail) {
+      await supabase.auth.signOut();
+      setSignedInEmail(null);
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
@@ -133,6 +174,43 @@ function LoginPage() {
             Acesse com o e-mail cadastrado do restaurante.
           </p>
 
+          {checkingSession ? (
+            <div className="mt-6 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verificando sessão...
+            </div>
+          ) : null}
+
+          {signedInEmail && !checkingSession ? (
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-semibold">Cadastro do restaurante pendente</p>
+              <p className="mt-1 text-amber-800">
+                Você está conectado como {signedInEmail}, mas essa conta ainda não tem restaurante.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9"
+                  onClick={() => nav({ to: "/admin/cadastro", replace: true })}
+                >
+                  Finalizar cadastro
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 bg-white"
+                  onClick={signOutCurrent}
+                  disabled={busy}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sair da conta
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
@@ -192,7 +270,7 @@ function LoginPage() {
             ) : null}
 
 
-            <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={busy}>
+            <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={busy || checkingSession}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
               Entrar
             </Button>
