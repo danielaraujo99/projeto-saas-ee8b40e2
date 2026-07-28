@@ -83,7 +83,11 @@ function Page() {
     if (!order || confirmedRef.current) return;
     confirmedRef.current = true;
     try {
-      await confirmPayment(order.id);
+      // Passa o pixPaymentId salvo na sessão local — o servidor consulta o
+      // Mercado Pago e só marca como pago se status === "approved" e o
+      // external_reference bater com este pedido.
+      const session = getPixSession(order.id);
+      await confirmPayment(order.id, session?.paymentId);
       setPhase("success");
       window.setTimeout(() => {
         nav({ to: "/pedido/$id", params: { id: order.id }, replace: true });
@@ -93,6 +97,7 @@ function Page() {
       toast.error("Falha ao confirmar pagamento.");
     }
   }, [order, nav]);
+
 
   if (isLoading || !order) {
     return (
