@@ -5,15 +5,21 @@ import type { AdminRole } from "./session";
 /**
  * Guarda de rota para o painel administrativo.
  *
- * Roda no `beforeLoad` de cada rota administrativa, ANTES de qualquer
- * componente montar ou `useQuery` disparar. Se o usuário não estiver logado
- * ou não tiver o papel permitido para a rota, redireciona antes que qualquer
- * dado seja carregado — bloqueia acesso por URL direta, não apenas esconde
- * o item do menu.
+ * Roda em `beforeLoad` — no cliente (as rotas admin são client-only) — ANTES
+ * de qualquer componente montar ou `useQuery` disparar.
  *
- * Observação: durante SSR não há sessão (localStorage é do browser). Nesse
- * caso apenas deixamos passar; o gate real acontece no client, antes das
- * queries serem habilitadas.
+ * A verdade sobre tenant/papel ativo vem do `app_metadata` do usuário
+ * (`active_restaurant_id`/`active_role`), que só é gravado via server function
+ * (tenant.functions.ts) após validação server-side de que o usuário é
+ * membro daquele restaurante com aquele papel. O JWT hook `custom_access_token_hook`
+ * também injeta esses valores como claim no token para uso em RLS.
+ *
+ * Nunca lê "primeira associação" silenciosamente:
+ *  - Se o usuário é membro de exatamente 1 restaurante e ainda não tem claim
+ *    ativo, o hook do banco injeta automaticamente e este guard também aceita.
+ *  - Se é membro de vários e ainda não escolheu, redireciona para
+ *    /admin/selecionar-restaurante.
+ *  - Se não é membro de nenhum, redireciona para /admin/cadastro.
  */
 export async function requireAdminRole(allowed: AdminRole[]) {
   if (typeof window === "undefined") return;
@@ -25,29 +31,42 @@ export async function requireAdminRole(allowed: AdminRole[]) {
     throw redirect({ to: "/admin/login" });
   }
 
-  const { data: member } = await supabase
+  const { data: memberRows } = await supabase
     .from("restaurant_members")
-    .select("role")
+    .select("role, restaurant_id")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (member as any)?.role as AdminRole | undefined;
+  const memberships = (memberRows ?? []) as Array<{ role: string; restaurant_id: string }>;
 
-  if (!role) {
-    // Usuário autenticado mas SEM restaurante vinculado: manda finalizar o
-    // cadastro do restaurante. Não pode ir para /admin/login (loop) nem para
-    // /admin (guard novamente).
+  if (memberships.length === 0) {
     throw redirect({ to: "/admin/cadastro" });
   }
 
+  const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+  const activeRestaurantId =
+    typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+
+  // Tenant ativo tem que ser um dos que o usuário É membro. Se o app_metadata
+  // aponta pra um restaurante que ele NÃO é mais membro (ex: removido depois),
+  // ignora e força reseleção.
+  let active = activeRestaurantId
+    ? memberships.find((m) => m.restaurant_id === activeRestaurantId) ?? null
+    : null;
+
+  if (!active) {
+    if (memberships.length === 1) {
+      // Único restaurante: o custom_access_token_hook já injeta o claim
+      // automaticamente. Aqui aceitamos direto pra não travar o fluxo.
+      active = memberships[0];
+    } else {
+      throw redirect({ to: "/admin/selecionar-restaurante" });
+    }
+  }
+
+  const role = active.role as AdminRole;
   if (!allowed.includes(role)) {
-    // Manda o usuário para a área que ele PODE acessar.
     if (role === "cozinha") throw redirect({ to: "/admin/cozinha" });
-    // caixa e admin caem no Pedidos como landing seguro.
     throw redirect({ to: "/admin/pedidos" });
   }
 }
-
