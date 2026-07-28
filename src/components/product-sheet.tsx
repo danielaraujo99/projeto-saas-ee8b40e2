@@ -92,15 +92,24 @@ export function ProductSheet({ product, editingItem, onClose }: Props) {
       updateItem(editingItem.id, { customizations: cs, quantity, note });
       toast.success("Item atualizado");
     } else {
-      addItem({
-        productId: product.id,
-        name: product.name,
-        image: product.image,
-        basePrice: product.price,
-        quantity,
-        note,
-        customizations: cs,
-      });
+      addItem(
+        {
+          productId: product.id,
+          name: product.name,
+          image: product.image,
+          basePrice: product.price,
+          quantity,
+          note,
+          customizations: cs,
+        },
+        activeRestaurant
+          ? {
+              id: activeRestaurant.id,
+              slug: activeRestaurant.slug,
+              name: activeRestaurant.name,
+            }
+          : undefined,
+      );
       toast.success("Adicionado ao carrinho");
     }
     onClose();
