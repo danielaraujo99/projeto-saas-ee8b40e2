@@ -111,13 +111,14 @@ export async function getOrderById(id: string): Promise<OrderRow | null> {
 }
 
 
-export async function listMyOrders(): Promise<OrderRow[]> {
+export async function listMyOrders(limit = 15): Promise<OrderRow[]> {
   const deviceId = getDeviceId();
   const { data, error } = await supabase
     .from("orders")
     .select("*")
     .eq("device_id", deviceId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
   const parsed = (data ?? []).map((r) => parseRow(r as Record<string, unknown>));
   return Promise.all(parsed.map(reconcileStatus));

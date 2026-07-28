@@ -81,16 +81,20 @@ function groupByDay(orders: OrderRow[]) {
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 
+const PAGE_SIZE = 15;
+
 function Page() {
   const [tab, setTab] = React.useState<"active" | "past">("active");
+  const [limit, setLimit] = React.useState(PAGE_SIZE);
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ["orders"],
-    queryFn: listMyOrders,
+    queryKey: ["orders", limit],
+    queryFn: () => listMyOrders(limit),
     refetchInterval: 8000,
     retry: 1,
   });
 
   const orders = data ?? [];
+  const canLoadMore = orders.length >= limit;
   const active = orders.filter(
     (o) => ACTIVE_STATUSES.includes(o.status as OrderStatus) || o.status === "pending_payment",
   );
