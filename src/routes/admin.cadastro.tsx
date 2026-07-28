@@ -314,11 +314,20 @@ function SignupPage() {
       <main className="flex min-h-screen items-start justify-center px-5 py-8 sm:px-8 sm:py-12 lg:h-screen lg:overflow-y-auto">
         <div className="w-full max-w-md">
           <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-            Criar conta do restaurante
+            {finalizeMode ? "Finalizar cadastro do restaurante" : "Criar conta do restaurante"}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Crie seu cardápio digital e comece a receber pedidos hoje mesmo.
+            {finalizeMode
+              ? "Sua conta já existe. Falta só configurar o restaurante para começar."
+              : "Crie seu cardápio digital e comece a receber pedidos hoje mesmo."}
           </p>
+
+          {checkingAuth ? (
+            <div className="mt-8 grid place-items-center py-10 text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+
 
           <form onSubmit={submit} className="mt-5 space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
