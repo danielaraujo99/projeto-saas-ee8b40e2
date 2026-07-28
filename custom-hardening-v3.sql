@@ -30,33 +30,45 @@ REVOKE SELECT ON public.profiles           FROM anon;
 REVOKE SELECT ON public.restaurant_members FROM anon;
 
 -- 2) Restringir leitura pública das opções de produto ------------------
-DROP POLICY IF EXISTS "pog_public_read" ON public.product_option_groups;
-CREATE POLICY "pog_public_read" ON public.product_option_groups
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-        FROM public.products p
-        JOIN public.restaurants r ON r.id = p.restaurant_id
-       WHERE p.id = product_option_groups.product_id
-         AND p.active = true
-         AND r.active = true
-    )
-  );
+--    Só executa se as tabelas existirem (menu-options.sql já aplicado).
+DO $$
+BEGIN
+  IF to_regclass('public.product_option_groups') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "pog_public_read" ON public.product_option_groups';
+    EXECUTE $p$
+      CREATE POLICY "pog_public_read" ON public.product_option_groups
+        FOR SELECT
+        USING (
+          EXISTS (
+            SELECT 1
+              FROM public.products p
+              JOIN public.restaurants r ON r.id = p.restaurant_id
+             WHERE p.id = product_option_groups.product_id
+               AND p.active = true
+               AND r.active = true
+          )
+        )
+    $p$;
+  END IF;
 
-DROP POLICY IF EXISTS "po_public_read" ON public.product_options;
-CREATE POLICY "po_public_read" ON public.product_options
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-        FROM public.product_option_groups g
-        JOIN public.products p    ON p.id = g.product_id
-        JOIN public.restaurants r ON r.id = p.restaurant_id
-       WHERE g.id = product_options.group_id
-         AND p.active = true
-         AND r.active = true
-    )
-  );
+  IF to_regclass('public.product_options') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "po_public_read" ON public.product_options';
+    EXECUTE $p$
+      CREATE POLICY "po_public_read" ON public.product_options
+        FOR SELECT
+        USING (
+          EXISTS (
+            SELECT 1
+              FROM public.product_option_groups g
+              JOIN public.products p    ON p.id = g.product_id
+              JOIN public.restaurants r ON r.id = p.restaurant_id
+             WHERE g.id = product_options.group_id
+               AND p.active = true
+               AND r.active = true
+          )
+        )
+    $p$;
+  END IF;
+END$$;
 
 COMMIT;
