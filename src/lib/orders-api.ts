@@ -1,8 +1,13 @@
 import { supabase } from "@/lib/custom-supabase";
 import { getDeviceId } from "@/lib/device-id";
-import { createOrderRecord, confirmOrderPayment } from "@/lib/orders.functions";
+import {
+  createOrderRecord,
+  confirmOrderPayment,
+  fetchOrderByIdScoped,
+} from "@/lib/orders.functions";
 import { computeStatus, type OrderStatus } from "@/lib/order-status";
 import type { Address, CartItem, PaymentMethod } from "@/types";
+
 
 export type OrderRow = {
   id: string;
