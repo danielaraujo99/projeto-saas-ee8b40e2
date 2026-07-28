@@ -52,7 +52,13 @@ function DemoPage() {
     );
   }
   return (
-    <MenuProvider categories={q.data.categories} products={q.data.products}>
+    <MenuProvider
+      categories={q.data.categories}
+      products={q.data.products}
+      restaurantId={q.data.restaurantId}
+      restaurantSlug={q.data.slug}
+      restaurantName={q.data.restaurantName}
+    >
       <HomePage />
     </MenuProvider>
   );
