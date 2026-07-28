@@ -31,6 +31,8 @@ function LoginPage() {
   const [show, setShow] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [needsConfirm, setNeedsConfirm] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
 
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -41,16 +43,45 @@ function LoginPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNeedsConfirm(false);
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      setError("E-mail ou senha inválidos. Verifique e tente novamente.");
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+        setNeedsConfirm(true);
+        setError("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada (e a pasta de spam).");
+      } else if (msg.includes("invalid login") || msg.includes("invalid_credentials")) {
+        setError("E-mail ou senha inválidos. Verifique e tente novamente.");
+      } else {
+        setError(error.message || "Não foi possível entrar agora. Tente novamente.");
+      }
       return;
     }
     toast.success("Bem-vindo de volta!");
     nav({ to: search.redirect || "/admin", replace: true });
   }
+
+  async function resendConfirmation() {
+    if (!email) {
+      setError("Digite seu e-mail para reenviar a confirmação.");
+      return;
+    }
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/admin/login` },
+    });
+    setResending(false);
+    if (error) {
+      toast.error(error.message || "Falha ao reenviar e-mail de confirmação.");
+      return;
+    }
+    toast.success("E-mail de confirmação reenviado. Cheque sua caixa de entrada.");
+  }
+
 
   return (
     <div className="grid min-h-screen bg-white lg:grid-cols-2">
@@ -149,6 +180,17 @@ function LoginPage() {
             </label>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+            {needsConfirm ? (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                disabled={resending}
+                className="text-sm font-medium text-primary hover:underline disabled:opacity-60"
+              >
+                {resending ? "Reenviando..." : "Reenviar e-mail de confirmação"}
+              </button>
+            ) : null}
+
 
             <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
