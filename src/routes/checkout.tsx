@@ -21,7 +21,7 @@ import { useAddresses } from "@/store/addresses";
 import { useAuth } from "@/store/auth";
 import { createOrderRecord } from "@/lib/orders.functions";
 import { getDeviceId } from "@/lib/device-id";
-import { BISTRO_AZUL_SLUG, restaurant } from "@/data/restaurant";
+import { restaurant } from "@/data/restaurant";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
