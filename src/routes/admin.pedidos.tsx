@@ -14,13 +14,13 @@ import { Loader2, Plus, Calendar, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-import { requireAdminRole } from "@/lib/admin/role-guard";
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/pedidos")({
   head: () => ({

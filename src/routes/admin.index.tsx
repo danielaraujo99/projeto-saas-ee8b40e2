@@ -6,7 +6,6 @@ import { SmoothArea } from "@/components/admin/charts";
 import { useAdminSession } from "@/lib/admin/session";
 import { getDashboardStats } from "@/lib/admin/dashboard";
 import {
-import { requireAdminRole } from "@/lib/admin/role-guard";
   Calendar,
   DollarSign,
   ShoppingBag,
@@ -14,6 +13,7 @@ import { requireAdminRole } from "@/lib/admin/role-guard";
   Clock,
   TrendingUp,
 } from "lucide-react";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({

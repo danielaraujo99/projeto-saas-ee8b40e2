@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Loader2, Printer, Zap, FileText, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-import { requireAdminRole } from "@/lib/admin/role-guard";
   DEFAULT_PRINT,
   buildReceiptHtml,
   loadPrintSettings,
@@ -16,6 +15,7 @@ import { requireAdminRole } from "@/lib/admin/role-guard";
   printHtml,
   type PrintSettings,
 } from "@/lib/admin/printing";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/impressao")({
   head: () => ({
