@@ -47,26 +47,35 @@ function LoginPage() {
         return;
       }
 
-      const { data: member } = await supabase
+      const { data: rows } = await supabase
         .from("restaurant_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
+        .select("restaurant_id")
+        .eq("user_id", user.id);
       if (cancelled) return;
-      if (member) {
-        nav({ to: search.redirect || "/admin", replace: true });
+      const memberships = rows ?? [];
+      if (memberships.length === 0) {
+        setSignedInEmail(user.email ?? "esta conta");
+        setEmail(user.email ?? "");
+        setCheckingSession(false);
         return;
       }
 
-      setSignedInEmail(user.email ?? "esta conta");
-      setEmail(user.email ?? "");
-      setCheckingSession(false);
+      const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+      const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+      const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
+
+      if (memberships.length === 1 || hasValidActive) {
+        nav({ to: search.redirect || "/admin", replace: true });
+        return;
+      }
+      // Múltiplos restaurantes e nenhum ativo — precisa escolher explicitamente.
+      nav({ to: "/admin/selecionar-restaurante", replace: true });
     })();
     return () => {
       cancelled = true;
     };
   }, [nav, search.redirect]);
+
 
   async function signOutCurrent() {
     setBusy(true);
@@ -101,7 +110,31 @@ function LoginPage() {
       return;
     }
     toast.success("Bem-vindo de volta!");
-    nav({ to: search.redirect || "/admin", replace: true });
+    // Decide destino com base em quantos restaurantes o usuário é membro.
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes.user;
+    if (!user) {
+      nav({ to: search.redirect || "/admin", replace: true });
+      return;
+    }
+    const { data: rows } = await supabase
+      .from("restaurant_members")
+      .select("restaurant_id")
+      .eq("user_id", user.id);
+    const memberships = rows ?? [];
+    if (memberships.length === 0) {
+      nav({ to: "/admin/cadastro", replace: true });
+      return;
+    }
+    const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+    const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+    const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
+    if (memberships.length === 1 || hasValidActive) {
+      nav({ to: search.redirect || "/admin", replace: true });
+      return;
+    }
+    nav({ to: "/admin/selecionar-restaurante", replace: true });
+
   }
 
   async function resendConfirmation() {

@@ -5,6 +5,13 @@ import type { User } from "@supabase/supabase-js";
 
 export type AdminRole = "admin" | "caixa" | "cozinha";
 
+export type MembershipSummary = {
+  restaurantId: string;
+  restaurantName: string;
+  restaurantSlug: string;
+  role: AdminRole;
+};
+
 export type AdminSession = {
   user: User;
   restaurantId: string;
@@ -12,6 +19,10 @@ export type AdminSession = {
   restaurantSlug: string;
   role: AdminRole;
   profileName: string;
+  /** All restaurants this user is member of (may include the active one). */
+  memberships: MembershipSummary[];
+  /** True when user is member of >1 restaurant but hasn't picked an active one yet. */
+  needsSelection: boolean;
 };
 
 const VALID_ROLES: readonly AdminRole[] = ["admin", "caixa", "cozinha"];
@@ -22,8 +33,9 @@ function parseRole(value: unknown): AdminRole | null {
     : null;
 }
 
-type MemberRow = {
+type MembershipRow = {
   role: unknown;
+  restaurant_id: string;
   restaurants: { id: string; name: string; slug: string } | null;
 };
 
@@ -31,30 +43,77 @@ async function fetchAdminSession(): Promise<AdminSession | null> {
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes.user;
   if (!user) return null;
-  const { data: member } = await supabase
+
+  const { data: memberRows } = await supabase
     .from("restaurant_members")
     .select("role, restaurant_id, restaurants!inner(id, name, slug)")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<MemberRow>();
-  if (!member) return null;
-  const role = parseRole(member.role);
-  if (!role) return null;
-  const rest = member.restaurants;
-  if (!rest) return null;
+    .order("created_at", { ascending: true });
+
+  const memberships: MembershipSummary[] = ((memberRows ?? []) as unknown as MembershipRow[])
+    .map((r) => {
+      const role = parseRole(r.role);
+      const rest = r.restaurants;
+      if (!role || !rest) return null;
+      return {
+        restaurantId: rest.id,
+        restaurantName: rest.name,
+        restaurantSlug: rest.slug,
+        role,
+      } satisfies MembershipSummary;
+    })
+    .filter((m): m is MembershipSummary => m !== null);
+
+  if (memberships.length === 0) return null;
+
+  // Active tenant vem do app_metadata (validado pelo backend via updateUserById).
+  // O JWT hook injeta esses mesmos valores como claim para RLS futura.
+  const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+  const activeRestaurantId =
+    typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+
+  let active: MembershipSummary | undefined;
+  if (activeRestaurantId) {
+    active = memberships.find((m) => m.restaurantId === activeRestaurantId);
+  }
+  if (!active && memberships.length === 1) {
+    // Membro de um único restaurante: fluxo direto, sem tela de seleção.
+    active = memberships[0];
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("name")
     .eq("id", user.id)
     .maybeSingle();
+  const profileName = profile?.name || user.email || "";
+
+  if (!active) {
+    // Precisa escolher explicitamente — devolve sessão marcada como tal.
+    // Usamos o primeiro membership só como placeholder para o shape; guards
+    // devem verificar `needsSelection` e redirecionar antes de renderizar.
+    const first = memberships[0];
+    return {
+      user,
+      restaurantId: first.restaurantId,
+      restaurantName: first.restaurantName,
+      restaurantSlug: first.restaurantSlug,
+      role: first.role,
+      profileName,
+      memberships,
+      needsSelection: true,
+    };
+  }
+
   return {
     user,
-    role,
-    restaurantId: rest.id,
-    restaurantName: rest.name,
-    restaurantSlug: rest.slug,
-    profileName: profile?.name || user.email || "",
+    restaurantId: active.restaurantId,
+    restaurantName: active.restaurantName,
+    restaurantSlug: active.restaurantSlug,
+    role: active.role,
+    profileName,
+    memberships,
+    needsSelection: false,
   };
 }
 
@@ -71,7 +130,12 @@ export function useAdminSession() {
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+      if (
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "USER_UPDATED" ||
+        event === "TOKEN_REFRESHED"
+      ) {
         qc.invalidateQueries({ queryKey: ["admin-session"] });
       }
     });

@@ -20,6 +20,8 @@ import {
   Grid3x3,
   Truck,
   Printer,
+  Store,
+
 } from "lucide-react";
 import { supabase } from "@/lib/custom-supabase";
 import { useAdminSession, type AdminRole } from "@/lib/admin/session";
@@ -93,10 +95,15 @@ export function AdminShell({
       nav({ to: "/admin/login", search: { redirect: path } as never });
       return;
     }
+    if (session.needsSelection) {
+      nav({ to: "/admin/selecionar-restaurante", replace: true });
+      return;
+    }
     if (session.role === "cozinha" && path !== "/admin/cozinha") {
       nav({ to: "/admin/cozinha", replace: true });
     }
   }, [session, isLoading, path, nav]);
+
 
   if (isLoading || !session) {
     return (
@@ -185,20 +192,33 @@ export function AdminShell({
                 </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 {session.role === "admin"
                   ? "Administrador"
                   : session.role === "caixa"
                     ? "Caixa"
                     : "Cozinha"}
+                <span className="mt-0.5 block truncate text-[11px] font-normal text-slate-400">
+                  {session.restaurantName}
+                </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {session.memberships.length > 1 && (
+                <>
+                  <DropdownMenuItem onSelect={() => nav({ to: "/admin/selecionar-restaurante" })}>
+                    <Store className="h-4 w-4" />
+                    Trocar restaurante
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onSelect={() => setLogoutOpen(true)}>
                 <LogOut className="h-4 w-4" />
                 Sair da conta
               </DropdownMenuItem>
             </DropdownMenuContent>
+
           </DropdownMenu>
         </header>
         <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
