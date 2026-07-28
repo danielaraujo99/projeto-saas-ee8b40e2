@@ -97,14 +97,6 @@ export async function createRestaurantForCustomUser(
   if (!restaurantName) throw new Error("Informe o nome do restaurante.");
   if (!cleanSlug) throw new Error("Escolha um link público válido.");
 
-  const { data: slugOwner, error: slugError } = await admin
-    .from("restaurants")
-    .select("id")
-    .eq("slug", cleanSlug)
-    .maybeSingle();
-  if (slugError) throw new Error("Não foi possível validar o link agora.");
-  if (slugOwner) throw new Error("slug_taken");
-
   const profileName = input.ownerName.trim() || user.email?.split("@")[0] || "Administrador";
   const { error: profileError } = await admin.from("profiles").upsert(
     {
@@ -116,23 +108,30 @@ export async function createRestaurantForCustomUser(
   );
   if (profileError) throw new Error("Não foi possível preparar seu perfil.");
 
+  // INSERT ... ON CONFLICT (slug) DO NOTHING RETURNING — atômico, sem
+  // round-trip de SELECT. Se o slug já existe, PostgREST devolve zero linhas
+  // e tratamos como "slug_taken".
   const { data: restaurant, error: restaurantError } = await admin
     .from("restaurants")
-    .insert({
-      name: restaurantName,
-      slug: cleanSlug,
-      category: input.category.trim() || null,
-      phone: cleanPhone(input.phone),
-      active: true,
-      settings: {},
-    })
+    .upsert(
+      {
+        name: restaurantName,
+        slug: cleanSlug,
+        category: input.category.trim() || null,
+        phone: cleanPhone(input.phone),
+        active: true,
+        settings: {},
+      },
+      { onConflict: "slug", ignoreDuplicates: true },
+    )
     .select("id, slug")
-    .single();
+    .maybeSingle();
 
   if (restaurantError) {
     if (isUniqueViolation(restaurantError.message)) throw new Error("slug_taken");
     throw new Error("Não foi possível criar o restaurante agora.");
   }
+  if (!restaurant) throw new Error("slug_taken");
 
   const created = restaurant as { id?: unknown; slug?: unknown } | null;
   const restaurantId = typeof created?.id === "string" ? created.id : null;
