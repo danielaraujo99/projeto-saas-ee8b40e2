@@ -46,6 +46,7 @@ import { Route as AdminCadastroRouteImport } from './routes/admin.cadastro'
 import { Route as AdminAvaliacoesRouteImport } from './routes/admin.avaliacoes'
 import { Route as PedidoIdAvaliarRouteImport } from './routes/pedido.$id.avaliar'
 import { Route as AdminPedidosNovoRouteImport } from './routes/admin.pedidos.novo'
+import { Route as ApiPublicCronExpirePixRouteImport } from './routes/api/public/cron/expire-pix'
 
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
@@ -232,6 +233,11 @@ const AdminPedidosNovoRoute = AdminPedidosNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => AdminPedidosRoute,
 } as any)
+const ApiPublicCronExpirePixRoute = ApiPublicCronExpirePixRouteImport.update({
+  id: '/api/public/cron/expire-pix',
+  path: '/api/public/cron/expire-pix',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/admin/pedidos/novo': typeof AdminPedidosNovoRoute
   '/pedido/$id/avaliar': typeof PedidoIdAvaliarRoute
+  '/api/public/cron/expire-pix': typeof ApiPublicCronExpirePixRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/admin/pedidos/novo': typeof AdminPedidosNovoRoute
   '/pedido/$id/avaliar': typeof PedidoIdAvaliarRoute
+  '/api/public/cron/expire-pix': typeof ApiPublicCronExpirePixRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/admin/pedidos/novo': typeof AdminPedidosNovoRoute
   '/pedido/$id/avaliar': typeof PedidoIdAvaliarRoute
+  '/api/public/cron/expire-pix': typeof ApiPublicCronExpirePixRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -391,6 +400,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/pedidos/novo'
     | '/pedido/$id/avaliar'
+    | '/api/public/cron/expire-pix'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/pedidos/novo'
     | '/pedido/$id/avaliar'
+    | '/api/public/cron/expire-pix'
   id:
     | '__root__'
     | '/'
@@ -469,6 +480,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/pedidos/novo'
     | '/pedido/$id/avaliar'
+    | '/api/public/cron/expire-pix'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -506,6 +518,7 @@ export interface RootRouteChildren {
   PagamentoIdRoute: typeof PagamentoIdRoute
   PedidoIdRoute: typeof PedidoIdRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
+  ApiPublicCronExpirePixRoute: typeof ApiPublicCronExpirePixRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -769,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPedidosNovoRouteImport
       parentRoute: typeof AdminPedidosRoute
     }
+    '/api/public/cron/expire-pix': {
+      id: '/api/public/cron/expire-pix'
+      path: '/api/public/cron/expire-pix'
+      fullPath: '/api/public/cron/expire-pix'
+      preLoaderRoute: typeof ApiPublicCronExpirePixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -843,6 +863,7 @@ const rootRouteChildren: RootRouteChildren = {
   PagamentoIdRoute: PagamentoIdRoute,
   PedidoIdRoute: PedidoIdRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
+  ApiPublicCronExpirePixRoute: ApiPublicCronExpirePixRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

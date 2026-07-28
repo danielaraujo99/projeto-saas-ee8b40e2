@@ -14,6 +14,19 @@ export type AdminSession = {
   profileName: string;
 };
 
+const VALID_ROLES: readonly AdminRole[] = ["admin", "caixa", "cozinha"];
+
+function parseRole(value: unknown): AdminRole | null {
+  return typeof value === "string" && (VALID_ROLES as readonly string[]).includes(value)
+    ? (value as AdminRole)
+    : null;
+}
+
+type MemberRow = {
+  role: unknown;
+  restaurants: { id: string; name: string; slug: string } | null;
+};
+
 async function fetchAdminSession(): Promise<AdminSession | null> {
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes.user;
@@ -24,19 +37,20 @@ async function fetchAdminSession(): Promise<AdminSession | null> {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle<MemberRow>();
   if (!member) return null;
+  const role = parseRole(member.role);
+  if (!role) return null;
+  const rest = member.restaurants;
+  if (!rest) return null;
   const { data: profile } = await supabase
     .from("profiles")
     .select("name")
     .eq("id", user.id)
     .maybeSingle();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rest = (member as any).restaurants;
   return {
     user,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    role: (member as any).role as AdminRole,
+    role,
     restaurantId: rest.id,
     restaurantName: rest.name,
     restaurantSlug: rest.slug,

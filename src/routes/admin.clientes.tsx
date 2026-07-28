@@ -16,35 +16,48 @@ export const Route = createFileRoute("/admin/clientes")({
 
 type Customer = { device_id: string; orders: number; spent: number; last: string };
 
-async function loadCustomers(restaurantId: string): Promise<Customer[]> {
+const PAGE_SIZE = 200;
+
+async function loadCustomers(
+  restaurantId: string,
+  limit: number,
+): Promise<{ rows: Customer[]; scanned: number; reachedEnd: boolean }> {
   const { data, error } = await supabase
     .from("orders")
     .select("device_id,total,created_at,status")
     .eq("restaurant_id", restaurantId)
     .neq("status", "pending_payment")
     .order("created_at", { ascending: false })
-    .limit(500);
-  if (error) return [];
+    .limit(limit);
+  if (error) return { rows: [], scanned: 0, reachedEnd: true };
+  const rows = (data ?? []) as Array<{ device_id: string; total: number; created_at: string }>;
   const map = new Map<string, Customer>();
-  for (const r of (data ?? []) as Array<{ device_id: string; total: number; created_at: string }>) {
+  for (const r of rows) {
     const cur = map.get(r.device_id) ?? { device_id: r.device_id, orders: 0, spent: 0, last: r.created_at };
     cur.orders += 1;
     cur.spent += Number(r.total || 0);
     if (new Date(r.created_at) > new Date(cur.last)) cur.last = r.created_at;
     map.set(r.device_id, cur);
   }
-  return Array.from(map.values()).sort((a, b) => b.spent - a.spent);
+  return {
+    rows: Array.from(map.values()).sort((a, b) => b.spent - a.spent),
+    scanned: rows.length,
+    reachedEnd: rows.length < limit,
+  };
 }
 
 function ClientesPage() {
   const [q, setQ] = React.useState("");
+  const [limit, setLimit] = React.useState(PAGE_SIZE);
   const { data: session } = useAdminSession();
-  const { data = [] } = useQuery({
-    queryKey: ["admin-customers", session?.restaurantId],
-    queryFn: () => loadCustomers(session!.restaurantId),
+  const { data, isFetching } = useQuery({
+    queryKey: ["admin-customers", session?.restaurantId, limit],
+    queryFn: () => loadCustomers(session!.restaurantId, limit),
     enabled: !!session?.restaurantId,
   });
-  const list = data.filter((c) => c.device_id.toLowerCase().includes(q.toLowerCase()));
+  const customers = data?.rows ?? [];
+  const list = customers.filter((c) => c.device_id.toLowerCase().includes(q.toLowerCase()));
+  const canLoadMore = data ? !data.reachedEnd : false;
 
   return (
     <AdminShell title="Clientes">
@@ -96,6 +109,17 @@ function ClientesPage() {
                 ))}
               </tbody>
             </table>
+            {canLoadMore ? (
+              <div className="border-t border-slate-100 p-3 text-center">
+                <button
+                  onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                  disabled={isFetching}
+                  className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {isFetching ? "Carregando…" : "Carregar mais"}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
