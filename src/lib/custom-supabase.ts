@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const SUPABASE_URL = "https://tckhsajvekpnfqtsstlx.supabase.co";
+// Credenciais lidas de variáveis de ambiente (VITE_*). Isso permite rotação
+// sem redeploy e não deixa chaves hardcoded no bundle. Se por algum motivo
+// o build não injetar a env, caímos para os valores públicos (anon é
+// publishable) para evitar quebra durante deploy transitório.
+const SUPABASE_URL =
+  (import.meta.env.VITE_CUSTOM_SUPABASE_URL as string | undefined) ??
+  "https://tckhsajvekpnfqtsstlx.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRja2hzYWp2ZWtwbmZxdHNzdGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTI4NDgsImV4cCI6MjEwMDY4ODg0OH0.6NQgOsns3dPs55MeD-09k6KKJxJgpL19q5w6pHxD2qM";
+  (import.meta.env.VITE_CUSTOM_SUPABASE_ANON_KEY as string | undefined) ??
+  "";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
