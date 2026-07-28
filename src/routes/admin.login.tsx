@@ -23,6 +23,40 @@ export const Route = createFileRoute("/admin/login")({
   component: LoginPage,
 });
 
+function authErrorText(error: unknown) {
+  if (!error || typeof error !== "object") return "";
+  const record = error as Record<string, unknown>;
+  const candidates = [record.message, record.msg, record.error_description, record.error, record.code];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" && typeof candidate !== "number") continue;
+    const value = String(candidate).trim();
+    if (!value || value === "{}") continue;
+    if (value.startsWith("{") && value.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(value) as Record<string, unknown>;
+        const parsedText = authErrorText(parsed);
+        if (parsedText) return parsedText;
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+  return "";
+}
+
+function friendlyLoginError(error: unknown) {
+  const text = authErrorText(error);
+  const msg = text.toLowerCase();
+  if (msg.includes("database error querying schema") || msg.includes("database error loading user")) {
+    return "Esta conta precisa de reparo no cadastro interno do backend. Execute o SQL de correção e tente novamente.";
+  }
+  if (msg.includes("invalid login") || msg.includes("invalid_credentials")) {
+    return "E-mail ou senha inválidos. Verifique e tente novamente.";
+  }
+  return text || "Não foi possível entrar agora. Tente novamente.";
+}
+
 function LoginPage() {
   const nav = useNavigate();
   const search = useSearch({ from: "/admin/login" });
@@ -98,14 +132,14 @@ function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      const msg = (error.message || "").toLowerCase();
+      const msg = authErrorText(error).toLowerCase();
       if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
         setNeedsConfirm(true);
         setError("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada (e a pasta de spam).");
       } else if (msg.includes("invalid login") || msg.includes("invalid_credentials")) {
         setError("E-mail ou senha inválidos. Verifique e tente novamente.");
       } else {
-        setError(error.message || "Não foi possível entrar agora. Tente novamente.");
+        setError(friendlyLoginError(error));
       }
       return;
     }
