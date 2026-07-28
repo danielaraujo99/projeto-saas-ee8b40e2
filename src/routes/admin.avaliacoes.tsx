@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Star, MessageSquare } from "lucide-react";
@@ -14,31 +15,43 @@ export const Route = createFileRoute("/admin/avaliacoes")({
 
 type Review = { id: string; rating: number; comment: string | null; created_at: string };
 
-async function loadReviews(restaurantId: string): Promise<Review[]> {
+const PAGE_SIZE = 20;
+
+async function loadReviews(
+  restaurantId: string,
+  limit: number,
+): Promise<{ rows: Review[]; reachedEnd: boolean }> {
   const { data, error } = await supabase
     .from("orders")
     .select("id,rating_food,rating_comment,updated_at")
     .eq("restaurant_id", restaurantId)
     .eq("rated", true)
     .order("updated_at", { ascending: false })
-    .limit(100);
-  if (error) return [];
-  return ((data ?? []) as Array<{ id: string; rating_food: number | null; rating_comment: string | null; updated_at: string }>).map((r) => ({
-    id: r.id,
-    rating: r.rating_food ?? 0,
-    comment: r.rating_comment,
-    created_at: r.updated_at,
-  }));
+    .limit(limit);
+  if (error) return { rows: [], reachedEnd: true };
+  const raw = (data ?? []) as Array<{ id: string; rating_food: number | null; rating_comment: string | null; updated_at: string }>;
+  return {
+    rows: raw.map((r) => ({
+      id: r.id,
+      rating: r.rating_food ?? 0,
+      comment: r.rating_comment,
+      created_at: r.updated_at,
+    })),
+    reachedEnd: raw.length < limit,
+  };
 }
 
 function AvaliacoesPage() {
   const { data: session } = useAdminSession();
-  const { data = [] } = useQuery({
-    queryKey: ["admin-reviews", session?.restaurantId],
-    queryFn: () => loadReviews(session!.restaurantId),
+  const [limit, setLimit] = React.useState(PAGE_SIZE);
+  const { data, isFetching } = useQuery({
+    queryKey: ["admin-reviews", session?.restaurantId, limit],
+    queryFn: () => loadReviews(session!.restaurantId, limit),
     enabled: !!session?.restaurantId,
   });
-  const avg = data.length ? (data.reduce((a, r) => a + r.rating, 0) / data.length).toFixed(1) : "—";
+  const rows = data?.rows ?? [];
+  const canLoadMore = data ? !data.reachedEnd : false;
+  const avg = rows.length ? (rows.reduce((a, r) => a + r.rating, 0) / rows.length).toFixed(1) : "—";
 
   return (
     <AdminShell title="Avaliações">
