@@ -550,16 +550,19 @@ function SignupPage() {
               disabled={busy || slugState.kind === "taken" || slugState.kind === "checking"}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Criar conta
+              {finalizeMode ? "Criar restaurante" : "Criar conta"}
             </Button>
           </form>
+          )}
 
-          <p className="mt-5 text-center text-sm text-slate-500">
-            Já tem conta?{" "}
-            <Link to="/admin/login" search={{}} className="font-semibold text-primary hover:underline">
-              Entrar
-            </Link>
-          </p>
+          {!finalizeMode && !checkingAuth ? (
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Já tem conta?{" "}
+              <Link to="/admin/login" search={{}} className="font-semibold text-primary hover:underline">
+                Entrar
+              </Link>
+            </p>
+          ) : null}
 
           <p className="mt-4 text-center text-[11px] text-slate-400">
             Ao criar a conta você concorda com os{" "}
@@ -573,6 +576,7 @@ function SignupPage() {
             .
           </p>
         </div>
+
       </main>
 
       <AdaptiveSheet
