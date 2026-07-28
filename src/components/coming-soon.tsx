@@ -106,13 +106,6 @@ export function ComingSoon() {
         {/* Center stage */}
         <main className="flex flex-1 flex-col justify-center py-16">
           <div className="mx-auto max-w-[980px] text-center">
-            <div className="fade-up inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.32em] text-[#c9a86a]">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#c9a86a] opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#c9a86a]" />
-              </span>
-              Sinal on-line · em preparo
-            </div>
 
             <h1
               className="fade-up mt-8 text-balance text-[clamp(3.25rem,11vw,9.5rem)] font-normal leading-[0.9] tracking-[-0.025em]"
