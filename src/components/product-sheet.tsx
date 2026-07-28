@@ -5,6 +5,7 @@ import { brl } from "@/lib/format";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { AdaptiveSheet } from "@/components/adaptive-sheet";
 import { useCart } from "@/store/cart";
+import { useActiveRestaurant } from "@/components/menu-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ProductBadgePill } from "@/components/product-badge";
