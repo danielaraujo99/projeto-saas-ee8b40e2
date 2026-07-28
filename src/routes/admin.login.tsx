@@ -46,9 +46,17 @@ function authErrorText(error: unknown): string {
 }
 
 function friendlyLoginError(error: unknown): string {
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? Number((error as Record<string, unknown>).status)
+      : null;
   const text = authErrorText(error);
   const msg = text.toLowerCase();
-  if (msg.includes("database error querying schema") || msg.includes("database error loading user")) {
+  if (
+    status === 500 ||
+    msg.includes("database error querying schema") ||
+    msg.includes("database error loading user")
+  ) {
     return "Esta conta precisa de reparo no cadastro interno do backend. Execute o SQL de correção e tente novamente.";
   }
   if (msg.includes("invalid login") || msg.includes("invalid_credentials")) {
