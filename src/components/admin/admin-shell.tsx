@@ -20,6 +20,8 @@ import {
   Grid3x3,
   Truck,
   Printer,
+  Store,
+
 } from "lucide-react";
 import { supabase } from "@/lib/custom-supabase";
 import { useAdminSession, type AdminRole } from "@/lib/admin/session";
