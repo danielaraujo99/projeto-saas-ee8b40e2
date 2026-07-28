@@ -23,7 +23,7 @@ export const Route = createFileRoute("/admin/login")({
   component: LoginPage,
 });
 
-function authErrorText(error: unknown) {
+function authErrorText(error: unknown): string {
   if (!error || typeof error !== "object") return "";
   const record = error as Record<string, unknown>;
   const candidates = [record.message, record.msg, record.error_description, record.error, record.code];
@@ -34,7 +34,7 @@ function authErrorText(error: unknown) {
     if (value.startsWith("{") && value.endsWith("}")) {
       try {
         const parsed = JSON.parse(value) as Record<string, unknown>;
-        const parsedText = authErrorText(parsed);
+        const parsedText: string = authErrorText(parsed);
         if (parsedText) return parsedText;
       } catch {
         return value;
@@ -45,7 +45,7 @@ function authErrorText(error: unknown) {
   return "";
 }
 
-function friendlyLoginError(error: unknown) {
+function friendlyLoginError(error: unknown): string {
   const text = authErrorText(error);
   const msg = text.toLowerCase();
   if (msg.includes("database error querying schema") || msg.includes("database error loading user")) {
