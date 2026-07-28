@@ -24,6 +24,7 @@ type LinesProps = {
 };
 
 export function CartLines({ onEdit }: LinesProps) {
+  const { productById } = useMenu();
   const items = useCart((s) => s.items);
   const setQuantity = useCart((s) => s.setQuantity);
   const removeItem = useCart((s) => s.removeItem);
