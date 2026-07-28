@@ -1,16 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-// Credenciais lidas de variáveis de ambiente (VITE_*). Isso permite rotação
-// sem redeploy e não deixa chaves hardcoded no bundle. Se por algum motivo
-// o build não injetar a env, caímos para os valores públicos (anon é
-// publishable) para evitar quebra durante deploy transitório.
-const SUPABASE_URL =
-  (import.meta.env.VITE_CUSTOM_SUPABASE_URL as string | undefined) ??
-  "https://tckhsajvekpnfqtsstlx.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-  (import.meta.env.VITE_CUSTOM_SUPABASE_ANON_KEY as string | undefined) ??
-  "";
+// Credenciais lidas exclusivamente de variáveis de ambiente (VITE_*). Sem
+// fallback hardcoded — qualquer rotação de chave passa a ser efetiva sem
+// redeploy de código e nenhuma URL/key fica no bundle.
+const SUPABASE_URL = import.meta.env.VITE_CUSTOM_SUPABASE_URL as string | undefined;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_CUSTOM_SUPABASE_ANON_KEY as string | undefined;
+
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  // eslint-disable-next-line no-console
+  console.warn("[custom-supabase] VITE_CUSTOM_SUPABASE_URL/ANON_KEY ausentes.");
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
