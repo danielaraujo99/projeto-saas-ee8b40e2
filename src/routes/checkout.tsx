@@ -156,6 +156,12 @@ function CheckoutPage() {
 
   const placeOrder = async () => {
     if (!pickup && !selectedAddress) return toast.error("Escolha um endereço de entrega.");
+    if (!cartRestaurantId && !cartRestaurantSlug) {
+      toast.error("Restaurante não identificado", {
+        description: "Reabra o cardápio do restaurante e adicione os itens novamente.",
+      });
+      return;
+    }
     setPlacing(true);
     try {
       // Chave de idempotência: um mesmo carrinho/valor/pagamento no mesmo
@@ -180,11 +186,12 @@ function CheckoutPage() {
           pickup,
           payment,
           etaMinutes: etaMax,
-          restaurantId: restaurant.id,
-          restaurantSlug: BISTRO_AZUL_SLUG,
+          restaurantId: cartRestaurantId,
+          restaurantSlug: cartRestaurantSlug,
           idempotencyKey,
         },
       });
+
 
       const orderId = typeof order.id === "string" ? order.id : null;
       if (!orderId) throw new Error("Pedido criado sem identificador.");
