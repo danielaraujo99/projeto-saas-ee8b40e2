@@ -12,7 +12,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.warn("[custom-supabase] VITE_CUSTOM_SUPABASE_URL/ANON_KEY ausentes.");
 }
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL ?? "", SUPABASE_PUBLISHABLE_KEY ?? "", {
   auth: {
     storage: typeof window !== "undefined" ? localStorage : undefined,
     persistSession: true,
