@@ -23,9 +23,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { PdvPaymentModal } from "@/components/admin/pdv-payment-modal";
 import { toast } from "sonner";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/pdv")({
   head: () => ({ meta: [{ title: "PDV — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: PdvPage,
 });
 

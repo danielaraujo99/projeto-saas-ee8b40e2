@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { NewOrderForm } from "@/components/admin/new-order-form";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/pedidos/novo")({
   head: () => ({
@@ -10,6 +11,7 @@ export const Route = createFileRoute("/admin/pedidos/novo")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: NewOrderPage,
 });
 

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Printer, Zap, FileText, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+import { requireAdminRole } from "@/lib/admin/role-guard";
   DEFAULT_PRINT,
   buildReceiptHtml,
   loadPrintSettings,
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/admin/impressao")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: ImpressaoPage,
 });
 

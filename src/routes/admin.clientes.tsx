@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Search, Users } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { supabase } from "@/lib/custom-supabase";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/clientes")({
   head: () => ({ meta: [{ title: "Clientes — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: ClientesPage,
 });
 

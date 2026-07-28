@@ -14,6 +14,7 @@ import { Loader2, Plus, Calendar, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+import { requireAdminRole } from "@/lib/admin/role-guard";
   Sheet,
   SheetContent,
   SheetHeader,
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/admin/pedidos")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: OrdersPage,
 });
 

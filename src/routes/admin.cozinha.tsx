@@ -7,6 +7,7 @@ import { useAdminSession } from "@/lib/admin/session";
 import { listRestaurantOrders } from "@/lib/admin/admin-orders";
 import { supabase } from "@/lib/custom-supabase";
 import { ChefHat, Loader2, Clock, Flame, CheckCircle2 } from "lucide-react";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/cozinha")({
   head: () => ({
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/admin/cozinha")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "cozinha"]),
   component: KdsPage,
 });
 

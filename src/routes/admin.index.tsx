@@ -6,6 +6,7 @@ import { SmoothArea } from "@/components/admin/charts";
 import { useAdminSession } from "@/lib/admin/session";
 import { getDashboardStats } from "@/lib/admin/dashboard";
 import {
+import { requireAdminRole } from "@/lib/admin/role-guard";
   Calendar,
   DollarSign,
   ShoppingBag,
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/admin/")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: DashboardPage,
 });
 

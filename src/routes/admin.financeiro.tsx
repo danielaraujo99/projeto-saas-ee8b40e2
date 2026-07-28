@@ -5,9 +5,11 @@ import { SmoothArea } from "@/components/admin/charts";
 import { useAdminSession } from "@/lib/admin/session";
 import { getDashboardStats } from "@/lib/admin/dashboard";
 import { DollarSign, ShoppingBag, Receipt } from "lucide-react";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: FinanceiroPage,
 });
 
