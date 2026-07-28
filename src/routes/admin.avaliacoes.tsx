@@ -74,11 +74,11 @@ function AvaliacoesPage() {
                 />
               ))}
             </div>
-            <div className="mt-1 text-xs text-slate-500">{data.length} avaliações</div>
+            <div className="mt-1 text-xs text-slate-500">{rows.length} avaliações</div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            {data.length === 0 ? (
+            {rows.length === 0 ? (
               <div className="grid place-items-center py-16 text-center">
                 <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-600">
                   <MessageSquare className="h-6 w-6" />
@@ -89,28 +89,41 @@ function AvaliacoesPage() {
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-100">
-                {data.map((r) => (
-                  <li key={r.id} className="py-3">
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-3.5 w-3.5 ${
-                            i < r.rating ? "fill-amber-400 text-amber-400" : "text-slate-300"
-                          }`}
-                        />
-                      ))}
-                      <span className="ml-auto text-xs text-slate-500">
-                        {new Date(r.created_at).toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                    {r.comment && (
-                      <p className="mt-1.5 text-sm text-slate-700">{r.comment}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="divide-y divide-slate-100">
+                  {rows.map((r) => (
+                    <li key={r.id} className="py-3">
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3.5 w-3.5 ${
+                              i < r.rating ? "fill-amber-400 text-amber-400" : "text-slate-300"
+                            }`}
+                          />
+                        ))}
+                        <span className="ml-auto text-xs text-slate-500">
+                          {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
+                      {r.comment && (
+                        <p className="mt-1.5 text-sm text-slate-700">{r.comment}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {canLoadMore ? (
+                  <div className="mt-3 text-center">
+                    <button
+                      onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                      disabled={isFetching}
+                      className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                    >
+                      {isFetching ? "Carregando…" : "Carregar mais"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
         </div>
