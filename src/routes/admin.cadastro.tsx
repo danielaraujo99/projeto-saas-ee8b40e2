@@ -91,6 +91,48 @@ function SignupPage() {
   const strength = passwordStrength(password);
   const selectedCat = CATEGORIES.find((c) => c.id === category);
 
+  // Modo "finalizar cadastro": usuário já autenticado mas sem restaurante.
+  // Nesse caso pulamos e-mail/senha e apenas coletamos dados do restaurante.
+  const [authedUserId, setAuthedUserId] = React.useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes.user;
+      if (cancelled) return;
+      if (!user) {
+        setCheckingAuth(false);
+        return;
+      }
+      // Já tem restaurante? Vai direto pro painel.
+      const { data: member } = await supabase
+        .from("restaurant_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (member) {
+        nav({ to: "/admin", replace: true });
+        return;
+      }
+      setAuthedUserId(user.id);
+      setEmail(user.email ?? "");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const meta = (user.user_metadata ?? {}) as any;
+      if (meta.name) setName(meta.name);
+      if (meta.phone) setPhone(formatPhone(String(meta.phone)));
+      setCheckingAuth(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nav]);
+
+  const finalizeMode = !!authedUserId;
+
   // slug: auto-derived from name; user can edit
   const [slug, setSlug] = React.useState("");
   const [slugTouched, setSlugTouched] = React.useState(false);
@@ -133,13 +175,15 @@ function SignupPage() {
       setError("Escolha a categoria do restaurante.");
       return;
     }
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== password2) {
-      setError("As senhas não coincidem.");
-      return;
+    if (!finalizeMode) {
+      if (password.length < 8) {
+        setError("A senha deve ter pelo menos 8 caracteres.");
+        return;
+      }
+      if (password !== password2) {
+        setError("As senhas não coincidem.");
+        return;
+      }
     }
     if (phone.replace(/\D/g, "").length < 10) {
       setError("Informe um WhatsApp válido com DDD.");
@@ -155,33 +199,40 @@ function SignupPage() {
     }
     setBusy(true);
 
-    const { data, error: signErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, phone },
-        emailRedirectTo: `${window.location.origin}/admin`,
-      },
-    });
-    if (signErr || !data.user) {
-      setBusy(false);
-      setError(
-        signErr?.message === "User already registered"
-          ? "Este e-mail já está cadastrado."
-          : (signErr?.message ?? "Falha ao criar conta."),
-      );
-      return;
-    }
-    if (!data.session) {
-      const s = await supabase.auth.signInWithPassword({ email, password });
-      if (s.error) {
+    // 1) Garante uma sessão autenticada ANTES de criar o restaurante.
+    if (!finalizeMode) {
+      const { data, error: signErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, phone },
+          emailRedirectTo: `${window.location.origin}/admin/cadastro`,
+        },
+      });
+      if (signErr || !data.user) {
         setBusy(false);
-        toast.info("Verifique seu e-mail para confirmar o cadastro antes de continuar.");
-        nav({ to: "/admin/login", search: {} });
+        setError(
+          signErr?.message === "User already registered"
+            ? "Este e-mail já está cadastrado. Faça login para continuar."
+            : (signErr?.message ?? "Falha ao criar conta."),
+        );
         return;
+      }
+      if (!data.session) {
+        // Tenta login imediato (caso confirmação de e-mail esteja desligada).
+        const s = await supabase.auth.signInWithPassword({ email, password });
+        if (s.error || !s.data.session) {
+          setBusy(false);
+          toast.info(
+            "Conta criada! Confirme seu e-mail e volte para finalizar o cadastro do restaurante.",
+          );
+          nav({ to: "/admin/login", search: {} });
+          return;
+        }
       }
     }
 
+    // 2) Cria o restaurante e vincula o usuário como admin (RPC SECURITY DEFINER).
     const { error: rpcErr } = await supabase.rpc("create_restaurant_with_slug", {
       _name: restaurantName,
       _slug: cleanSlug,
@@ -190,17 +241,28 @@ function SignupPage() {
     });
     setBusy(false);
     if (rpcErr) {
-      if (rpcErr.message?.includes("slug_taken")) {
+      const msg = rpcErr.message ?? "";
+      if (msg.includes("slug_taken")) {
         setError("Este link foi ocupado enquanto você preenchia. Escolha outro.");
         setSlugState({ kind: "taken", slug: cleanSlug });
         return;
       }
-      setError("Sua conta foi criada, mas não conseguimos criar o restaurante. Entre e tente novamente.");
+      if (msg.includes("already_has_restaurant")) {
+        toast.success("Você já tem um restaurante vinculado. Redirecionando...");
+        nav({ to: "/admin", replace: true });
+        return;
+      }
+      if (msg.includes("not_authenticated")) {
+        setError("Sua sessão expirou. Faça login e tente novamente.");
+        return;
+      }
+      setError("Não foi possível criar o restaurante agora. Tente novamente em instantes.");
       return;
     }
     toast.success(`Restaurante criado! Seu link: menualtas.com.br/${cleanSlug}`);
     nav({ to: "/admin", replace: true });
   }
+
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
@@ -252,11 +314,20 @@ function SignupPage() {
       <main className="flex min-h-screen items-start justify-center px-5 py-8 sm:px-8 sm:py-12 lg:h-screen lg:overflow-y-auto">
         <div className="w-full max-w-md">
           <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-            Criar conta do restaurante
+            {finalizeMode ? "Finalizar cadastro do restaurante" : "Criar conta do restaurante"}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Crie seu cardápio digital e comece a receber pedidos hoje mesmo.
+            {finalizeMode
+              ? "Sua conta já existe. Falta só configurar o restaurante para começar."
+              : "Crie seu cardápio digital e comece a receber pedidos hoje mesmo."}
           </p>
+
+          {checkingAuth ? (
+            <div className="mt-8 grid place-items-center py-10 text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+
 
           <form onSubmit={submit} className="mt-5 space-y-3.5">
             <div className="grid gap-3.5 sm:grid-cols-2">
@@ -356,86 +427,101 @@ function SignupPage() {
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
+            {finalizeMode ? (
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {email}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Você já está autenticado. Só falta cadastrar o restaurante.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
 
-            <div className="grid gap-3.5 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={show ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    onClick={() => setShow((s) => !s)}
-                    aria-label={show ? "Ocultar" : "Mostrar"}
-                  >
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {password ? (
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-1 gap-1">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            "h-1 flex-1 rounded-full",
-                            i < strength.score
-                              ? strength.score >= 3
-                                ? "bg-emerald-500"
-                                : "bg-amber-500"
-                              : "bg-slate-200",
-                          )}
-                        />
-                      ))}
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={show ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        onClick={() => setShow((s) => !s)}
+                        aria-label={show ? "Ocultar" : "Mostrar"}
+                      >
+                        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
-                    <span className="text-[11px] text-slate-500">{strength.label}</span>
+                    {password ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-1 gap-1">
+                          {[0, 1, 2, 3].map((i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                "h-1 flex-1 rounded-full",
+                                i < strength.score
+                                  ? strength.score >= 3
+                                    ? "bg-emerald-500"
+                                    : "bg-amber-500"
+                                  : "bg-slate-200",
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[11px] text-slate-500">{strength.label}</span>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password2">Confirmar</Label>
-                <div className="relative">
-                  <Input
-                    id="password2"
-                    type={show2 ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={password2}
-                    onChange={(e) => setPassword2(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    onClick={() => setShow2((s) => !s)}
-                    aria-label={show2 ? "Ocultar" : "Mostrar"}
-                  >
-                    {show2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password2">Confirmar</Label>
+                    <div className="relative">
+                      <Input
+                        id="password2"
+                        type={show2 ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={password2}
+                        onChange={(e) => setPassword2(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        onClick={() => setShow2((s) => !s)}
+                        aria-label={show2 ? "Ocultar" : "Mostrar"}
+                      >
+                        {show2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {password2 && password && password !== password2 ? (
+                      <p className="text-[11px] text-rose-600">Não coincidem.</p>
+                    ) : null}
+                  </div>
                 </div>
-                {password2 && password && password !== password2 ? (
-                  <p className="text-[11px] text-rose-600">Não coincidem.</p>
-                ) : null}
-              </div>
-            </div>
+              </>
+            )}
+
 
             <div className="space-y-1.5">
               <Label htmlFor="phone">WhatsApp pessoal (com DDD)</Label>
@@ -464,16 +550,19 @@ function SignupPage() {
               disabled={busy || slugState.kind === "taken" || slugState.kind === "checking"}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Criar conta
+              {finalizeMode ? "Criar restaurante" : "Criar conta"}
             </Button>
           </form>
+          )}
 
-          <p className="mt-5 text-center text-sm text-slate-500">
-            Já tem conta?{" "}
-            <Link to="/admin/login" search={{}} className="font-semibold text-primary hover:underline">
-              Entrar
-            </Link>
-          </p>
+          {!finalizeMode && !checkingAuth ? (
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Já tem conta?{" "}
+              <Link to="/admin/login" search={{}} className="font-semibold text-primary hover:underline">
+                Entrar
+              </Link>
+            </p>
+          ) : null}
 
           <p className="mt-4 text-center text-[11px] text-slate-400">
             Ao criar a conta você concorda com os{" "}
@@ -487,6 +576,7 @@ function SignupPage() {
             .
           </p>
         </div>
+
       </main>
 
       <AdaptiveSheet

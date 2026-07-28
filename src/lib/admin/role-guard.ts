@@ -37,7 +37,10 @@ export async function requireAdminRole(allowed: AdminRole[]) {
   const role = (member as any)?.role as AdminRole | undefined;
 
   if (!role) {
-    throw redirect({ to: "/admin/login" });
+    // Usuário autenticado mas SEM restaurante vinculado: manda finalizar o
+    // cadastro do restaurante. Não pode ir para /admin/login (loop) nem para
+    // /admin (guard novamente).
+    throw redirect({ to: "/admin/cadastro" });
   }
 
   if (!allowed.includes(role)) {
@@ -47,3 +50,4 @@ export async function requireAdminRole(allowed: AdminRole[]) {
     throw redirect({ to: "/admin/pedidos" });
   }
 }
+
