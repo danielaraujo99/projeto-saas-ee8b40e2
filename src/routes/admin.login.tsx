@@ -180,6 +180,17 @@ function LoginPage() {
             </label>
 
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+            {needsConfirm ? (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                disabled={resending}
+                className="text-sm font-medium text-primary hover:underline disabled:opacity-60"
+              >
+                {resending ? "Reenviando..." : "Reenviar e-mail de confirmação"}
+              </button>
+            ) : null}
+
 
             <Button type="submit" className="h-11 w-full text-base font-semibold" disabled={busy}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
