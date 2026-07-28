@@ -91,6 +91,48 @@ function SignupPage() {
   const strength = passwordStrength(password);
   const selectedCat = CATEGORIES.find((c) => c.id === category);
 
+  // Modo "finalizar cadastro": usuário já autenticado mas sem restaurante.
+  // Nesse caso pulamos e-mail/senha e apenas coletamos dados do restaurante.
+  const [authedUserId, setAuthedUserId] = React.useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes.user;
+      if (cancelled) return;
+      if (!user) {
+        setCheckingAuth(false);
+        return;
+      }
+      // Já tem restaurante? Vai direto pro painel.
+      const { data: member } = await supabase
+        .from("restaurant_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (member) {
+        nav({ to: "/admin", replace: true });
+        return;
+      }
+      setAuthedUserId(user.id);
+      setEmail(user.email ?? "");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const meta = (user.user_metadata ?? {}) as any;
+      if (meta.name) setName(meta.name);
+      if (meta.phone) setPhone(formatPhone(String(meta.phone)));
+      setCheckingAuth(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nav]);
+
+  const finalizeMode = !!authedUserId;
+
   // slug: auto-derived from name; user can edit
   const [slug, setSlug] = React.useState("");
   const [slugTouched, setSlugTouched] = React.useState(false);
@@ -133,13 +175,15 @@ function SignupPage() {
       setError("Escolha a categoria do restaurante.");
       return;
     }
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== password2) {
-      setError("As senhas não coincidem.");
-      return;
+    if (!finalizeMode) {
+      if (password.length < 8) {
+        setError("A senha deve ter pelo menos 8 caracteres.");
+        return;
+      }
+      if (password !== password2) {
+        setError("As senhas não coincidem.");
+        return;
+      }
     }
     if (phone.replace(/\D/g, "").length < 10) {
       setError("Informe um WhatsApp válido com DDD.");
@@ -155,33 +199,40 @@ function SignupPage() {
     }
     setBusy(true);
 
-    const { data, error: signErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, phone },
-        emailRedirectTo: `${window.location.origin}/admin`,
-      },
-    });
-    if (signErr || !data.user) {
-      setBusy(false);
-      setError(
-        signErr?.message === "User already registered"
-          ? "Este e-mail já está cadastrado."
-          : (signErr?.message ?? "Falha ao criar conta."),
-      );
-      return;
-    }
-    if (!data.session) {
-      const s = await supabase.auth.signInWithPassword({ email, password });
-      if (s.error) {
+    // 1) Garante uma sessão autenticada ANTES de criar o restaurante.
+    if (!finalizeMode) {
+      const { data, error: signErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, phone },
+          emailRedirectTo: `${window.location.origin}/admin/cadastro`,
+        },
+      });
+      if (signErr || !data.user) {
         setBusy(false);
-        toast.info("Verifique seu e-mail para confirmar o cadastro antes de continuar.");
-        nav({ to: "/admin/login", search: {} });
+        setError(
+          signErr?.message === "User already registered"
+            ? "Este e-mail já está cadastrado. Faça login para continuar."
+            : (signErr?.message ?? "Falha ao criar conta."),
+        );
         return;
+      }
+      if (!data.session) {
+        // Tenta login imediato (caso confirmação de e-mail esteja desligada).
+        const s = await supabase.auth.signInWithPassword({ email, password });
+        if (s.error || !s.data.session) {
+          setBusy(false);
+          toast.info(
+            "Conta criada! Confirme seu e-mail e volte para finalizar o cadastro do restaurante.",
+          );
+          nav({ to: "/admin/login", search: {} });
+          return;
+        }
       }
     }
 
+    // 2) Cria o restaurante e vincula o usuário como admin (RPC SECURITY DEFINER).
     const { error: rpcErr } = await supabase.rpc("create_restaurant_with_slug", {
       _name: restaurantName,
       _slug: cleanSlug,
@@ -190,17 +241,28 @@ function SignupPage() {
     });
     setBusy(false);
     if (rpcErr) {
-      if (rpcErr.message?.includes("slug_taken")) {
+      const msg = rpcErr.message ?? "";
+      if (msg.includes("slug_taken")) {
         setError("Este link foi ocupado enquanto você preenchia. Escolha outro.");
         setSlugState({ kind: "taken", slug: cleanSlug });
         return;
       }
-      setError("Sua conta foi criada, mas não conseguimos criar o restaurante. Entre e tente novamente.");
+      if (msg.includes("already_has_restaurant")) {
+        toast.success("Você já tem um restaurante vinculado. Redirecionando...");
+        nav({ to: "/admin", replace: true });
+        return;
+      }
+      if (msg.includes("not_authenticated")) {
+        setError("Sua sessão expirou. Faça login e tente novamente.");
+        return;
+      }
+      setError("Não foi possível criar o restaurante agora. Tente novamente em instantes.");
       return;
     }
     toast.success(`Restaurante criado! Seu link: menualtas.com.br/${cleanSlug}`);
     nav({ to: "/admin", replace: true });
   }
+
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
