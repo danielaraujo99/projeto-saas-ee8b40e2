@@ -169,6 +169,17 @@ function Page() {
                 </ul>
               </section>
             ))}
+            {canLoadMore ? (
+              <div className="pt-2 text-center">
+                <button
+                  onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                  disabled={isFetching}
+                  className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {isFetching ? "Carregando…" : "Carregar mais pedidos"}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </main>
