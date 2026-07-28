@@ -25,6 +25,7 @@ import {
 } from "@/lib/admin/tables";
 import { listWaiters, type Waiter } from "@/lib/admin/waiters";
 import { buildTableCheckHtml, loadPrintSettings, printHtml } from "@/lib/admin/printing";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/mesas")({
   head: () => ({
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/admin/mesas")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: MesasPage,
 });
 

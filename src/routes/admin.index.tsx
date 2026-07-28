@@ -13,6 +13,7 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/admin/")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: DashboardPage,
 });
 

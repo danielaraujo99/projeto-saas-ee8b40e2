@@ -4,9 +4,11 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Star, MessageSquare } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { supabase } from "@/lib/custom-supabase";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/avaliacoes")({
   head: () => ({ meta: [{ title: "Avaliações — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: AvaliacoesPage,
 });
 

@@ -21,9 +21,11 @@ import {
 } from "@/lib/admin/menu";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/cardapio")({
   head: () => ({ meta: [{ title: "Cardápio — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: CardapioPage,
 });
 

@@ -20,9 +20,11 @@ import {
 } from "@/lib/admin/coupons";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/cupons")({
   head: () => ({ meta: [{ title: "Cupons — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: CuponsPage,
 });
 

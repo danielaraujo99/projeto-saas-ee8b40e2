@@ -39,6 +39,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Chave de idempotência estável derivada do carrinho: mesmo carrinho no mesmo
+// dispositivo sempre gera a mesma chave, garantindo que double-click / retry
+// não crie pedidos duplicados.
+async function buildIdempotencyKey(input: {
+  deviceId: string;
+  items: unknown;
+  total: number;
+  payment: unknown;
+  pickup: boolean;
+}): Promise<string> {
+  const payload = JSON.stringify({
+    d: input.deviceId,
+    i: input.items,
+    t: input.total,
+    p: input.payment,
+    k: input.pickup,
+  });
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .slice(0, 40);
+  }
+  // Fallback simples caso subtle não esteja disponível.
+  let h = 0;
+  for (let i = 0; i < payload.length; i++) h = (h * 31 + payload.charCodeAt(i)) | 0;
+  return `k-${input.deviceId.slice(0, 8)}-${Math.abs(h)}`;
+}
+
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -125,6 +156,15 @@ function CheckoutPage() {
     if (!pickup && !selectedAddress) return toast.error("Escolha um endereço de entrega.");
     setPlacing(true);
     try {
+      // Chave de idempotência: um mesmo carrinho/valor/pagamento no mesmo
+      // dispositivo NÃO deve gerar dois pedidos por cliques repetidos.
+      const idempotencyKey = await buildIdempotencyKey({
+        deviceId: getDeviceId(),
+        items,
+        total,
+        payment,
+        pickup,
+      });
       const order = await createOrderRecordFn({
         data: {
           deviceId: getDeviceId(),
@@ -140,8 +180,10 @@ function CheckoutPage() {
           etaMinutes: etaMax,
           restaurantId: restaurant.id,
           restaurantSlug: BISTRO_AZUL_SLUG,
+          idempotencyKey,
         },
       });
+
       const orderId = typeof order.id === "string" ? order.id : null;
       if (!orderId) throw new Error("Pedido criado sem identificador.");
       orderCreatedRef.current = true;

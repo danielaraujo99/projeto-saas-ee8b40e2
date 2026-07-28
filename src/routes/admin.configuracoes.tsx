@@ -20,6 +20,7 @@ import {
 import { AlertTriangle, Check, CheckCircle2, Loader2, X } from "lucide-react";
 import mpLogo from "@/assets/mercado-pago.webp.asset.json";
 import { supabase } from "@/lib/custom-supabase";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 function slugify(v: string) {
   return v
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/admin/configuracoes")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: ConfigPage,
 });
 

@@ -21,9 +21,11 @@ import {
 } from "@/lib/admin/stock";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/estoque")({
   head: () => ({ meta: [{ title: "Estoque — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: EstoquePage,
 });
 

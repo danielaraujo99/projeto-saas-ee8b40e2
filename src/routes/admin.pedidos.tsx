@@ -20,6 +20,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/pedidos")({
   head: () => ({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/admin/pedidos")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: OrdersPage,
 });
 

@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, UserRound } from "lucide-react";
 import { brl } from "@/lib/format";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/garcons")({
   head: () => ({
@@ -42,6 +43,7 @@ export const Route = createFileRoute("/admin/garcons")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: WaitersPage,
 });
 

@@ -28,6 +28,7 @@ import { Eye, Trash2, Loader2 } from "lucide-react";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/entregas")({
   head: () => ({
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/admin/entregas")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin", "caixa"]),
   component: EntregasPage,
 });
 

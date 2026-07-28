@@ -1,8 +1,13 @@
 import { supabase } from "@/lib/custom-supabase";
 import { getDeviceId } from "@/lib/device-id";
-import { createOrderRecord, confirmOrderPayment } from "@/lib/orders.functions";
+import {
+  createOrderRecord,
+  confirmOrderPayment,
+  fetchOrderByIdScoped,
+} from "@/lib/orders.functions";
 import { computeStatus, type OrderStatus } from "@/lib/order-status";
 import type { Address, CartItem, PaymentMethod } from "@/types";
+
 
 export type OrderRow = {
   id: string;
@@ -66,6 +71,7 @@ export type CreateOrderInput = {
   etaMinutes: number;
   restaurantId: string;
   restaurantSlug?: string;
+  idempotencyKey?: string;
 };
 
 export async function createOrder(input: CreateOrderInput): Promise<OrderRow> {
@@ -85,22 +91,25 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderRow> {
       pickup: input.pickup,
       payment: input.payment,
       etaMinutes: input.etaMinutes,
+      idempotencyKey: input.idempotencyKey,
     },
   });
   return parseRow(data as Record<string, unknown>);
 }
 
-export async function confirmPayment(id: string): Promise<OrderRow> {
-  const data = await confirmOrderPayment({ data: { id } });
+export async function confirmPayment(id: string, pixPaymentId?: number): Promise<OrderRow> {
+  const deviceId = getDeviceId();
+  const data = await confirmOrderPayment({ data: { id, deviceId, pixPaymentId } });
   return parseRow(data as Record<string, unknown>);
 }
 
 export async function getOrderById(id: string): Promise<OrderRow | null> {
-  const { data, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
+  const deviceId = getDeviceId();
+  const data = await fetchOrderByIdScoped({ data: { id, deviceId } });
   if (!data) return null;
   return reconcileStatus(parseRow(data as Record<string, unknown>));
 }
+
 
 export async function listMyOrders(): Promise<OrderRow[]> {
   const deviceId = getDeviceId();

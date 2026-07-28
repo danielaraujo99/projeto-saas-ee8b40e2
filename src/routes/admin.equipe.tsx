@@ -6,9 +6,11 @@ import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminSession } from "@/lib/admin/session";
 import { supabase } from "@/lib/custom-supabase";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/equipe")({
   head: () => ({ meta: [{ title: "Equipe — MenuAltas" }, { name: "robots", content: "noindex" }] }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: EquipePage,
 });
 

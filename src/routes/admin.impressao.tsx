@@ -15,6 +15,7 @@ import {
   printHtml,
   type PrintSettings,
 } from "@/lib/admin/printing";
+import { requireAdminRole } from "@/lib/admin/role-guard";
 
 export const Route = createFileRoute("/admin/impressao")({
   head: () => ({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/admin/impressao")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: () => requireAdminRole(["admin"]),
   component: ImpressaoPage,
 });
 
