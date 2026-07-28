@@ -12,12 +12,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Tag, UtensilsCrossed, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Tag, UtensilsCrossed, Pencil, Trash2, Search, GripVertical, ArrowUp, ArrowDown, Upload, X, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminSession } from "@/lib/admin/session";
 import {
   listCategories, listProducts, createCategory, updateCategory, deleteCategory,
   createProduct, updateProduct, deleteProduct, type Category, type Product,
+  listOptionGroupsForProduct, saveProductOptionGroups, uploadProductImage,
+  type OptionGroupDraft,
 } from "@/lib/admin/menu";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -309,6 +311,7 @@ function ProductSheet({
   const isNew = value === "new";
   const initial = isNew ? null : (value as Product | null);
 
+  const [tab, setTab] = React.useState<"basic" | "options">("basic");
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [price, setPrice] = React.useState<number>(0);
@@ -316,9 +319,14 @@ function ProductSheet({
   const [imageUrl, setImageUrl] = React.useState("");
   const [active, setActive] = React.useState(true);
   const [featured, setFeatured] = React.useState(false);
+  const [groups, setGroups] = React.useState<OptionGroupDraft[]>([]);
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!open) return;
+    setTab("basic");
     setName(initial?.name ?? "");
     setDescription(initial?.description ?? "");
     setPrice(initial?.price ?? 0);
@@ -326,12 +334,65 @@ function ProductSheet({
     setImageUrl(initial?.image_url ?? "");
     setActive(initial?.active ?? true);
     setFeatured(initial?.featured ?? false);
+    setUploadError(null);
+    setGroups([]);
+    if (initial?.id) {
+      listOptionGroupsForProduct(initial.id)
+        .then((gs) =>
+          setGroups(
+            gs.map((g, i) => ({
+              id: g.id,
+              name: g.name,
+              min_select: g.min_select,
+              max_select: g.max_select,
+              required: g.required,
+              sort_order: i,
+              options: g.options.map((o, j) => ({
+                id: o.id,
+                name: o.name,
+                price_delta: Number(o.price_delta) || 0,
+                sort_order: j,
+              })),
+            })),
+          ),
+        )
+        .catch((e) => toast.error(e.message ?? "Erro ao carregar opções"));
+    }
   }, [open, initial]);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const url = await uploadProductImage(restaurantId, file);
+      setImageUrl(url);
+      toast.success("Imagem enviada");
+    } catch (e: any) {
+      const msg = e?.message ?? "Falha no upload da imagem";
+      setUploadError(msg);
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const save = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Informe o nome");
       if (price < 0) throw new Error("Preço inválido");
+      // valida grupos
+      for (const g of groups) {
+        if (!g.name.trim()) throw new Error("Todo grupo precisa de nome");
+        if (g.min_select > g.max_select) throw new Error(`Grupo "${g.name}": mínimo maior que o máximo`);
+        if (g.max_select < 1) throw new Error(`Grupo "${g.name}": máximo deve ser ≥ 1`);
+        if (g.options.length === 0) throw new Error(`Grupo "${g.name}": adicione ao menos uma opção`);
+        for (const o of g.options) {
+          if (!o.name.trim()) throw new Error(`Grupo "${g.name}": todas as opções precisam de nome`);
+          if (o.price_delta < 0) throw new Error(`Grupo "${g.name}": preço adicional inválido`);
+        }
+      }
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
@@ -341,10 +402,19 @@ function ProductSheet({
         active,
         featured,
       };
+      let productId = initial?.id;
       if (isNew) {
-        await createProduct({ restaurant_id: restaurantId, ...payload });
+        productId = await createProduct({ restaurant_id: restaurantId, ...payload });
       } else if (initial) {
         await updateProduct(initial.id, payload);
+      }
+      if (productId) {
+        const normalized = groups.map((g, i) => ({
+          ...g,
+          sort_order: i,
+          options: g.options.map((o, j) => ({ ...o, sort_order: j })),
+        }));
+        await saveProductOptionGroups(restaurantId, productId, normalized);
       }
     },
     onSuccess: () => { onSaved(); toast.success("Produto salvo"); onClose(); },
@@ -357,55 +427,344 @@ function ProductSheet({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Helpers de manipulação dos grupos/opções
+  const addGroup = () =>
+    setGroups((g) => [
+      ...g,
+      {
+        name: "",
+        min_select: 0,
+        max_select: 1,
+        required: false,
+        sort_order: g.length,
+        options: [],
+      },
+    ]);
+  const updateGroup = (i: number, patch: Partial<OptionGroupDraft>) =>
+    setGroups((g) => g.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const removeGroup = (i: number) => setGroups((g) => g.filter((_, idx) => idx !== i));
+  const moveGroup = (i: number, dir: -1 | 1) =>
+    setGroups((g) => {
+      const j = i + dir;
+      if (j < 0 || j >= g.length) return g;
+      const c = [...g];
+      [c[i], c[j]] = [c[j], c[i]];
+      return c;
+    });
+
+  const addOption = (gi: number) =>
+    updateGroup(gi, {
+      options: [
+        ...groups[gi].options,
+        { name: "", price_delta: 0, sort_order: groups[gi].options.length },
+      ],
+    });
+  const updateOption = (
+    gi: number,
+    oi: number,
+    patch: Partial<OptionGroupDraft["options"][number]>,
+  ) =>
+    updateGroup(gi, {
+      options: groups[gi].options.map((o, k) => (k === oi ? { ...o, ...patch } : o)),
+    });
+  const removeOption = (gi: number, oi: number) =>
+    updateGroup(gi, { options: groups[gi].options.filter((_, k) => k !== oi) });
+  const moveOption = (gi: number, oi: number, dir: -1 | 1) => {
+    const j = oi + dir;
+    const opts = groups[gi].options;
+    if (j < 0 || j >= opts.length) return;
+    const c = [...opts];
+    [c[oi], c[j]] = [c[j], c[oi]];
+    updateGroup(gi, { options: c });
+  };
+
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{isNew ? "Novo produto" : "Editar produto"}</SheetTitle>
-          <SheetDescription>Preencha os dados exibidos no cardápio.</SheetDescription>
-        </SheetHeader>
-        <div className="mt-4 space-y-3">
-          <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-            <span>Nome</span>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: X-Burger" />
-          </label>
-          <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-            <span>Descrição</span>
-            <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-              <span>Preço (R$)</span>
-              <Input type="number" step="0.10" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
-            </label>
-            <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-              <span>Categoria</span>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-          <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-            <span>URL da imagem</span>
-            <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <div className="text-sm font-medium text-slate-800">Ativo</div>
-              <Switch checked={active} onCheckedChange={setActive} />
-            </label>
-            <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <div className="text-sm font-medium text-slate-800">Destaque</div>
-              <Switch checked={featured} onCheckedChange={setFeatured} />
-            </label>
+      <SheetContent side="right" className="flex w-full flex-col overflow-hidden p-0 sm:max-w-xl">
+        <div className="border-b border-slate-200 px-6 pb-3 pt-6">
+          <SheetHeader>
+            <SheetTitle>{isNew ? "Novo produto" : "Editar produto"}</SheetTitle>
+            <SheetDescription>Preencha os dados exibidos no cardápio.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setTab("basic")}
+              className={cn(
+                "rounded-md px-3 py-1.5 transition",
+                tab === "basic" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500",
+              )}
+            >
+              Dados básicos
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("options")}
+              className={cn(
+                "rounded-md px-3 py-1.5 transition",
+                tab === "options" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500",
+              )}
+            >
+              Opções e Adicionais
+              {groups.length > 0 && (
+                <span className="ml-1.5 rounded-full bg-blue-100 px-1.5 text-[10px] text-blue-700">
+                  {groups.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
-        <div className="mt-6 flex justify-between gap-2">
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          {tab === "basic" ? (
+            <div className="space-y-3">
+              <label className="grid gap-1.5 text-xs font-medium text-slate-600">
+                <span>Nome</span>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: X-Burger" />
+              </label>
+              <label className="grid gap-1.5 text-xs font-medium text-slate-600">
+                <span>Descrição</span>
+                <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1.5 text-xs font-medium text-slate-600">
+                  <span>Preço (R$)</span>
+                  <Input type="number" step="0.10" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
+                </label>
+                <label className="grid gap-1.5 text-xs font-medium text-slate-600">
+                  <span>Categoria</span>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+
+              {/* Upload de imagem */}
+              <div className="grid gap-2 text-xs font-medium text-slate-600">
+                <span>Imagem do produto</span>
+                <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imageUrl} alt="Prévia" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-slate-300">
+                        <ImageIcon className="h-6 w-6" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFile(e.target.files?.[0] ?? undefined)}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Enviando…</>
+                        ) : (
+                          <><Upload className="h-3.5 w-3.5" /> {imageUrl ? "Trocar imagem" : "Enviar imagem"}</>
+                        )}
+                      </Button>
+                      {imageUrl && !uploading && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setImageUrl("")}
+                        >
+                          <X className="h-3.5 w-3.5" /> Remover
+                        </Button>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      JPG, PNG ou WEBP • até 5 MB
+                    </p>
+                    {uploadError && (
+                      <p className="mt-1 text-[11px] font-medium text-red-600">
+                        {uploadError}{" "}
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="underline"
+                        >
+                          Tentar novamente
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <div className="text-sm font-medium text-slate-800">Ativo</div>
+                  <Switch checked={active} onCheckedChange={setActive} />
+                </label>
+                <label className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <div className="text-sm font-medium text-slate-800">Destaque</div>
+                  <Switch checked={featured} onCheckedChange={setFeatured} />
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-blue-50/60 p-3 text-xs text-blue-800">
+                Configure grupos como "Ponto da carne" ou "Adicionais". Cada grupo tem opções
+                e regras de quantas o cliente pode escolher.
+              </div>
+
+              {groups.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                  Nenhum grupo. Adicione o primeiro para permitir personalização.
+                </div>
+              )}
+
+              {groups.map((g, gi) => {
+                const isSingle = g.max_select === 1;
+                return (
+                  <div key={gi} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-start gap-2">
+                      <GripVertical className="mt-2 h-4 w-4 shrink-0 text-slate-300" />
+                      <div className="min-w-0 flex-1 space-y-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Input
+                            className="h-9 flex-1 min-w-40"
+                            placeholder="Nome do grupo (ex.: Adicionais)"
+                            value={g.name}
+                            onChange={(e) => updateGroup(gi, { name: e.target.value })}
+                          />
+                          <div className="flex items-center gap-1">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => moveGroup(gi, -1)} disabled={gi === 0}>
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => moveGroup(gi, 1)} disabled={gi === groups.length - 1}>
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeGroup(gi)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-500">
+                            <span>Tipo</span>
+                            <Select
+                              value={isSingle ? "single" : "multi"}
+                              onValueChange={(v) =>
+                                updateGroup(gi, v === "single"
+                                  ? { max_select: 1, min_select: g.required ? 1 : 0 }
+                                  : { max_select: Math.max(2, g.max_select) })
+                              }
+                            >
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="single">Única</SelectItem>
+                                <SelectItem value="multi">Múltipla</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-500">
+                            <span>Obrigatório</span>
+                            <div className="flex h-8 items-center">
+                              <Switch
+                                checked={g.required}
+                                onCheckedChange={(v) =>
+                                  updateGroup(gi, { required: v, min_select: v ? Math.max(1, g.min_select) : 0 })
+                                }
+                              />
+                            </div>
+                          </label>
+                          {!isSingle && (
+                            <>
+                              <label className="grid gap-1 text-[11px] font-medium text-slate-500">
+                                <span>Mínimo</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  className="h-8"
+                                  value={g.min_select}
+                                  onChange={(e) => updateGroup(gi, { min_select: Math.max(0, Number(e.target.value) || 0) })}
+                                />
+                              </label>
+                              <label className="grid gap-1 text-[11px] font-medium text-slate-500">
+                                <span>Máximo</span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  className="h-8"
+                                  value={g.max_select}
+                                  onChange={(e) => updateGroup(gi, { max_select: Math.max(1, Number(e.target.value) || 1) })}
+                                />
+                              </label>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {g.options.map((opt, oi) => (
+                            <div key={oi} className="flex items-center gap-1.5">
+                              <Input
+                                className="h-8 flex-1"
+                                placeholder="Nome da opção"
+                                value={opt.name}
+                                onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
+                              />
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-slate-400">+R$</span>
+                                <Input
+                                  type="number"
+                                  step="0.10"
+                                  min={0}
+                                  className="h-8 w-20"
+                                  value={opt.price_delta}
+                                  onChange={(e) => updateOption(gi, oi, { price_delta: Math.max(0, Number(e.target.value) || 0) })}
+                                />
+                              </div>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => moveOption(gi, oi, -1)} disabled={oi === 0}>
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => moveOption(gi, oi, 1)} disabled={oi === g.options.length - 1}>
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeOption(gi, oi)}>
+                                <X className="h-3.5 w-3.5 text-red-500" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addOption(gi)}>
+                            <Plus className="h-3.5 w-3.5" /> Adicionar opção
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <Button type="button" variant="outline" onClick={addGroup} className="w-full">
+                <Plus className="h-4 w-4" /> Adicionar grupo
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-between gap-2 border-t border-slate-200 bg-white px-6 py-4">
           {!isNew ? (
             <Button variant="ghost" onClick={() => del.mutate()} disabled={del.isPending}>
               <Trash2 className="h-4 w-4 text-red-500" /> Excluir
@@ -413,7 +772,9 @@ function ProductSheet({
           ) : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending || uploading}>
+              {save.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : "Salvar"}
+            </Button>
           </div>
         </div>
       </SheetContent>
