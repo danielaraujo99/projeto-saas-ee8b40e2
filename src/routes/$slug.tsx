@@ -1,7 +1,9 @@
 import * as React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { supabase } from "@/lib/custom-supabase";
+import { useQuery } from "@tanstack/react-query";
 import { HomePage } from "./index";
+import { MenuProvider } from "@/components/menu-context";
+import { fetchMenuBySlug } from "@/lib/storefront";
 import { Loader2, SearchX, Home, UtensilsCrossed } from "lucide-react";
 
 export const Route = createFileRoute("/$slug")({
@@ -16,33 +18,20 @@ export const Route = createFileRoute("/$slug")({
 
 function SlugStorefront() {
   const { slug } = Route.useParams();
-  const [state, setState] = React.useState<"loading" | "ok" | "notfound">("loading");
+  const q = useQuery({
+    queryKey: ["storefront", slug],
+    queryFn: () => fetchMenuBySlug(slug),
+    staleTime: 30_000,
+  });
 
-  React.useEffect(() => {
-    let cancelled = false;
-    supabase
-      .from("restaurants")
-      .select("slug, active")
-      .eq("slug", slug)
-      .eq("active", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        setState(data ? "ok" : "notfound");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
-
-  if (state === "loading") {
+  if (q.isLoading) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
-  if (state === "notfound") {
+  if (!q.data) {
     return (
       <div className="min-h-screen bg-background px-4 pb-24 pt-10 md:pt-24">
         <div className="mx-auto max-w-md">
@@ -82,6 +71,10 @@ function SlugStorefront() {
       </div>
     );
   }
-  return <HomePage />;
+  return (
+    <MenuProvider categories={q.data.categories} products={q.data.products}>
+      <HomePage />
+    </MenuProvider>
+  );
 }
 
