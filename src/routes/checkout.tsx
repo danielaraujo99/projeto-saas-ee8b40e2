@@ -125,6 +125,15 @@ function CheckoutPage() {
     if (!pickup && !selectedAddress) return toast.error("Escolha um endereço de entrega.");
     setPlacing(true);
     try {
+      // Chave de idempotência: um mesmo carrinho/valor/pagamento no mesmo
+      // dispositivo NÃO deve gerar dois pedidos por cliques repetidos.
+      const idempotencyKey = await buildIdempotencyKey({
+        deviceId: getDeviceId(),
+        items,
+        total,
+        payment,
+        pickup,
+      });
       const order = await createOrderRecordFn({
         data: {
           deviceId: getDeviceId(),
@@ -140,8 +149,10 @@ function CheckoutPage() {
           etaMinutes: etaMax,
           restaurantId: restaurant.id,
           restaurantSlug: BISTRO_AZUL_SLUG,
+          idempotencyKey,
         },
       });
+
       const orderId = typeof order.id === "string" ? order.id : null;
       if (!orderId) throw new Error("Pedido criado sem identificador.");
       orderCreatedRef.current = true;
