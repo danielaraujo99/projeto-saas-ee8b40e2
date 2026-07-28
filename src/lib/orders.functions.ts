@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAdmin, recomputeOrderTotals, safeErrorMessage } from "./orders.server";
+import { assertRateLimit } from "./rate-limit.server";
 
 // ---------------------------------------------------------------------------
 // Criação de pedido com chave de idempotência + recomputo server-side.
@@ -28,6 +29,9 @@ export const createOrderRecord = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      // Freio anti-enumeração: 20 pedidos por IP por minuto é folgado para
+      // um comprador legítimo e inviabiliza scripts.
+      assertRateLimit("create_order", { max: 20, windowMs: 60_000 });
       // 1) Recomputa e valida totais no servidor — rejeita divergência.
       recomputeOrderTotals({
         items: data.items as Parameters<typeof recomputeOrderTotals>[0]["items"],
@@ -136,6 +140,9 @@ export const confirmOrderPayment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
+      // Confirmação é polled a cada ~1.5s pelo cliente; 60/min por IP cobre
+      // isso com folga e barra brute-force de (id + deviceId).
+      assertRateLimit("confirm_order", { max: 60, windowMs: 60_000 });
       const admin = await getAdmin();
 
       const { data: order, error: readErr } = await admin
