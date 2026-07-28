@@ -1,7 +1,6 @@
 import * as React from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Search, ShoppingBag } from "lucide-react";
-import { categories, products } from "@/data/menu";
 import { RestaurantHeader } from "@/components/restaurant-header";
 import { CategoryTabs } from "@/components/category-tabs";
 import { ProductCard } from "@/components/product-card";
@@ -14,6 +13,7 @@ import { useCart } from "@/store/cart";
 import { CartLines, CouponBox, OrderSummary } from "@/components/cart-parts";
 import { AuthGate } from "@/components/auth-gate";
 import { brl } from "@/lib/format";
+import { useMenu } from "@/components/menu-context";
 
 import { ComingSoon } from "@/components/coming-soon";
 
@@ -40,8 +40,9 @@ export const Route = createFileRoute("/")({
 });
 
 export function HomePage() {
+  const { categories, products } = useMenu();
   const [query, setQuery] = React.useState("");
-  const [activeCat, setActiveCat] = React.useState(categories[0].id);
+  const [activeCat, setActiveCat] = React.useState(categories[0]?.id ?? "");
   const [selected, setSelected] = React.useState<Product | null>(null);
   const [authOpen, setAuthOpen] = React.useState(false);
   const itemCount = useCart((s) => s.itemCount());

@@ -5,7 +5,7 @@ import { useCart } from "@/store/cart";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { brl } from "@/lib/format";
 import type { CartItem, Product } from "@/types";
-import { productById } from "@/data/menu";
+import { useMenu } from "@/components/menu-context";
 import { restaurant } from "@/data/restaurant";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ type LinesProps = {
 };
 
 export function CartLines({ onEdit }: LinesProps) {
+  const { productById } = useMenu();
   const items = useCart((s) => s.items);
   const setQuantity = useCart((s) => s.setQuantity);
   const removeItem = useCart((s) => s.removeItem);

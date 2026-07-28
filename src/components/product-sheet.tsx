@@ -126,7 +126,7 @@ export function ProductSheet({ product, editingItem, onClose }: Props) {
       <div
         ref={scrollRef}
         onScroll={(e) => setScrolled((e.currentTarget as HTMLDivElement).scrollTop > 4)}
-        className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7"
+        className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pt-6 pb-28 sm:px-7 sm:pb-24"
       >
         <div className="space-y-2.5">
           <h2 className="text-2xl font-bold leading-tight text-foreground">{product.name}</h2>
