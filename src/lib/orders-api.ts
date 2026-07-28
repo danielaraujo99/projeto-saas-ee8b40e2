@@ -68,16 +68,6 @@ export type CreateOrderInput = {
   address?: Address;
   pickup: boolean;
   payment: PaymentMethod;
-export type CreateOrderInput = {
-  items: CartItem[];
-  subtotal: number;
-  deliveryFee: number;
-  discount: number;
-  total: number;
-  couponCode?: string;
-  address?: Address;
-  pickup: boolean;
-  payment: PaymentMethod;
   etaMinutes: number;
   restaurantId: string;
   restaurantSlug?: string;
