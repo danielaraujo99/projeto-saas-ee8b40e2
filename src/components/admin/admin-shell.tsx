@@ -93,10 +93,15 @@ export function AdminShell({
       nav({ to: "/admin/login", search: { redirect: path } as never });
       return;
     }
+    if (session.needsSelection) {
+      nav({ to: "/admin/selecionar-restaurante", replace: true });
+      return;
+    }
     if (session.role === "cozinha" && path !== "/admin/cozinha") {
       nav({ to: "/admin/cozinha", replace: true });
     }
   }, [session, isLoading, path, nav]);
+
 
   if (isLoading || !session) {
     return (
