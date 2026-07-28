@@ -46,7 +46,7 @@ function SelectorPage() {
   React.useEffect(() => {
     if (!data) return;
     if (!data.user) {
-      nav({ to: "/admin/login", replace: true });
+      nav({ to: "/admin/login", search: {}, replace: true });
       return;
     }
     if (data.memberships.length === 0) {
@@ -62,7 +62,7 @@ function SelectorPage() {
       const token = sess.session?.access_token;
       if (!token) {
         toast.error("Sessão expirada. Entre novamente.");
-        nav({ to: "/admin/login", replace: true });
+        nav({ to: "/admin/login", search: {}, replace: true });
         return;
       }
       await setActive({ data: { accessToken: token, restaurantId } });
@@ -82,7 +82,7 @@ function SelectorPage() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    nav({ to: "/admin/login", replace: true });
+    nav({ to: "/admin/login", search: {}, replace: true });
   }
 
   if (isLoading || !data) {

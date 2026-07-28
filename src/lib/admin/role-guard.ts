@@ -28,7 +28,7 @@ export async function requireAdminRole(allowed: AdminRole[]) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    throw redirect({ to: "/admin/login" });
+    throw redirect({ to: "/admin/login", search: {} });
   }
 
   const { data: memberRows } = await supabase
