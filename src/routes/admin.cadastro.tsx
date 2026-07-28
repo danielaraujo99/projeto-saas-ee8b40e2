@@ -427,86 +427,101 @@ function SignupPage() {
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
+            {finalizeMode ? (
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {email}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Você já está autenticado. Só falta cadastrar o restaurante.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
 
-            <div className="grid gap-3.5 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={show ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    onClick={() => setShow((s) => !s)}
-                    aria-label={show ? "Ocultar" : "Mostrar"}
-                  >
-                    {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {password ? (
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-1 gap-1">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            "h-1 flex-1 rounded-full",
-                            i < strength.score
-                              ? strength.score >= 3
-                                ? "bg-emerald-500"
-                                : "bg-amber-500"
-                              : "bg-slate-200",
-                          )}
-                        />
-                      ))}
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">Senha</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={show ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        onClick={() => setShow((s) => !s)}
+                        aria-label={show ? "Ocultar" : "Mostrar"}
+                      >
+                        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
-                    <span className="text-[11px] text-slate-500">{strength.label}</span>
+                    {password ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-1 gap-1">
+                          {[0, 1, 2, 3].map((i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                "h-1 flex-1 rounded-full",
+                                i < strength.score
+                                  ? strength.score >= 3
+                                    ? "bg-emerald-500"
+                                    : "bg-amber-500"
+                                  : "bg-slate-200",
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[11px] text-slate-500">{strength.label}</span>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password2">Confirmar</Label>
-                <div className="relative">
-                  <Input
-                    id="password2"
-                    type={show2 ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={password2}
-                    onChange={(e) => setPassword2(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    onClick={() => setShow2((s) => !s)}
-                    aria-label={show2 ? "Ocultar" : "Mostrar"}
-                  >
-                    {show2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password2">Confirmar</Label>
+                    <div className="relative">
+                      <Input
+                        id="password2"
+                        type={show2 ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={password2}
+                        onChange={(e) => setPassword2(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        onClick={() => setShow2((s) => !s)}
+                        aria-label={show2 ? "Ocultar" : "Mostrar"}
+                      >
+                        {show2 ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {password2 && password && password !== password2 ? (
+                      <p className="text-[11px] text-rose-600">Não coincidem.</p>
+                    ) : null}
+                  </div>
                 </div>
-                {password2 && password && password !== password2 ? (
-                  <p className="text-[11px] text-rose-600">Não coincidem.</p>
-                ) : null}
-              </div>
-            </div>
+              </>
+            )}
+
 
             <div className="space-y-1.5">
               <Label htmlFor="phone">WhatsApp pessoal (com DDD)</Label>
