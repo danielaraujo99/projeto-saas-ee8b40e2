@@ -21,6 +21,7 @@ type Props = {
 export function ProductSheet({ product, editingItem, onClose }: Props) {
   const addItem = useCart((s) => s.addItem);
   const updateItem = useCart((s) => s.updateItem);
+  const activeRestaurant = useActiveRestaurant();
   const open = !!product;
 
   const [selections, setSelections] = React.useState<Record<string, CartCustomization[]>>({});
