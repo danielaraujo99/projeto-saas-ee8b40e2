@@ -789,7 +789,7 @@ function ProductSheet({
           ) : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending || uploading}>
+            <Button onClick={() => save.mutate()} disabled={save.isPending || uploading || !categoryId}>
               {save.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : "Salvar"}
             </Button>
           </div>
