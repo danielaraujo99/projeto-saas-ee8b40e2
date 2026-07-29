@@ -480,6 +480,9 @@ function DeliveryStep({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { restaurant: r } = useCartRestaurant();
+  const [dMin, dMax] = r?.deliveryMinutes ?? [0, 40];
+  const fee = r?.deliveryFee ?? 0;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -496,8 +499,7 @@ function DeliveryStep({
           <Bike className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold">Entrega</span>
           <span className="text-xs text-foreground/55">
-            {restaurant.deliveryMinutes[0]}–{restaurant.deliveryMinutes[1]} min ·{" "}
-            {brl(restaurant.deliveryFee)}
+            {dMin}–{dMax} min · {fee > 0 ? brl(fee) : "Grátis"}
           </span>
         </button>
         <button
@@ -594,7 +596,8 @@ function DeliveryStep({
 }
 
 function PickupInfo() {
-  const p = restaurant.pickupAddress;
+  const { restaurant } = useCartRestaurant();
+  const p = restaurant?.pickupAddress;
   const [name, setName] = React.useState("");
   const eta = React.useMemo(() => {
     const d = new Date(Date.now() + 20 * 60 * 1000);
@@ -614,7 +617,7 @@ function PickupInfo() {
           <MapPin className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1 text-sm">
-          <div className="font-semibold">{restaurant.name}</div>
+          <div className="font-semibold">{restaurant?.name ?? "Restaurante"}</div>
           {p ? (
             <>
               <div className="text-foreground/70">
