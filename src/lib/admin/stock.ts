@@ -113,11 +113,11 @@ export async function registerMovement(input: {
 }) {
   const { data: item, error: e1 } = await sb
     .from("stock_items")
-    .select("qty")
+    .select("quantity")
     .eq("id", input.item_id)
     .maybeSingle();
   if (e1) throw e1;
-  const current = Number(item?.qty ?? 0);
+  const current = Number(item?.quantity ?? 0);
   const delta =
     input.kind === "in" ? input.qty : input.kind === "out" ? -input.qty : input.qty - current;
   const newQty =
@@ -134,7 +134,7 @@ export async function registerMovement(input: {
   if (e2) throw e2;
   const { error: e3 } = await sb
     .from("stock_items")
-    .update({ qty: newQty })
+    .update({ quantity: newQty })
     .eq("id", input.item_id);
   if (e3) throw e3;
 }
