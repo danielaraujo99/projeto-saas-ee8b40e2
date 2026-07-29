@@ -81,18 +81,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Restaurante Demo — Peça pelo cardápio digital" },
+      { title: "MenuAtlas — Em breve" },
       {
         name: "description",
-        content: "Cardápio digital do Restaurante Demo. Monte seu pedido e receba em casa.",
+        content: "MenuAtlas está chegando. A nova plataforma de cardápio digital, pedidos e gestão para restaurantes modernos.",
       },
-      { property: "og:title", content: "Restaurante Demo" },
+      { property: "og:title", content: "MenuAtlas — Em breve" },
       {
         property: "og:description",
-        content: "Cardápio digital do Restaurante Demo. Monte seu pedido e receba em casa.",
+        content: "MenuAtlas está chegando. A nova plataforma de cardápio digital, pedidos e gestão para restaurantes modernos.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "MenuAtlas — Em breve" },
+      { name: "twitter:description", content: "MenuAtlas está chegando. A nova plataforma de cardápio digital, pedidos e gestão para restaurantes modernos." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/81bc5deb-b547-4fc9-981b-c3d424927574/id-preview-a7126f65--24151eee-b193-479b-8fae-188408abd81a.lovable.app-1785331728964.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/81bc5deb-b547-4fc9-981b-c3d424927574/id-preview-a7126f65--24151eee-b193-479b-8fae-188408abd81a.lovable.app-1785331728964.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

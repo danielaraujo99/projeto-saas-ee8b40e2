@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "A nova plataforma de cardápio digital, pedidos e gestão para restaurantes modernos.",
+          "MenuAtlas está chegando. A nova plataforma de cardápio digital, pedidos e gestão para restaurantes modernos.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
