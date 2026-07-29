@@ -21,7 +21,7 @@ import { useAddresses } from "@/store/addresses";
 import { useAuth } from "@/store/auth";
 import { createOrderRecord } from "@/lib/orders.functions";
 import { getDeviceId } from "@/lib/device-id";
-import { restaurant } from "@/data/restaurant";
+import { useCartRestaurant } from "@/lib/use-cart-restaurant";
 import { brl } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,9 +77,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Finalizar pedido — Restaurante Demo" },
+      { title: "Finalizar pedido — MenuAtlas" },
       { name: "description", content: "Escolha entrega, pagamento e revise seu pedido." },
-      { property: "og:title", content: "Finalizar pedido — Restaurante Demo" },
+      { property: "og:title", content: "Finalizar pedido — MenuAtlas" },
       { property: "og:description", content: "Escolha entrega, pagamento e revise seu pedido." },
     ],
   }),
@@ -117,27 +117,32 @@ function CheckoutPage() {
   const [confirmLeave, setConfirmLeave] = React.useState(false);
   const orderCreatedRef = React.useRef(false);
 
-  const fee = pickup ? 0 : restaurant.deliveryFee;
+  const { restaurant } = useCartRestaurant();
+  const deliveryFee = restaurant?.deliveryFee ?? 0;
+  const [minEta, maxEta] = restaurant?.deliveryMinutes ?? [0, 40];
+  const isOpen = restaurant?.isOpen ?? true;
+
+  const fee = pickup ? 0 : deliveryFee;
   const total = Math.max(0, subtotal - discount) + fee;
   const selectedAddress =
     addresses.find((a) => a.id === selectedId) ??
     addresses.find((a) => a.isDefault) ??
     addresses[0];
-  const etaMax = pickup ? 20 : restaurant.deliveryMinutes[1];
-  const etaMin = pickup ? 15 : restaurant.deliveryMinutes[0];
+  const etaMax = pickup ? 20 : maxEta;
+  const etaMin = pickup ? 15 : minEta;
 
   React.useEffect(() => {
     if (items.length === 0 && !orderCreatedRef.current) nav({ to: "/demo" });
   }, [items.length]);
 
   React.useEffect(() => {
-    if (!restaurant.isOpen && items.length > 0 && !orderCreatedRef.current) {
+    if (!isOpen && items.length > 0 && !orderCreatedRef.current) {
       toast.error("Restaurante fechado no momento", {
         description: "Você pode finalizar assim que reabrir.",
       });
       nav({ to: "/carrinho" });
     }
-  }, [items.length, nav]);
+  }, [items.length, nav, isOpen]);
 
   // Block navigating away from checkout while the cart still has items (except
   // when we've just placed the order and are heading to /pagamento).
@@ -475,6 +480,9 @@ function DeliveryStep({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { restaurant: r } = useCartRestaurant();
+  const [dMin, dMax] = r?.deliveryMinutes ?? [0, 40];
+  const fee = r?.deliveryFee ?? 0;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -491,8 +499,7 @@ function DeliveryStep({
           <Bike className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold">Entrega</span>
           <span className="text-xs text-foreground/55">
-            {restaurant.deliveryMinutes[0]}–{restaurant.deliveryMinutes[1]} min ·{" "}
-            {brl(restaurant.deliveryFee)}
+            {dMin}–{dMax} min · {fee > 0 ? brl(fee) : "Grátis"}
           </span>
         </button>
         <button
@@ -589,7 +596,8 @@ function DeliveryStep({
 }
 
 function PickupInfo() {
-  const p = restaurant.pickupAddress;
+  const { restaurant } = useCartRestaurant();
+  const p = restaurant?.pickupAddress;
   const [name, setName] = React.useState("");
   const eta = React.useMemo(() => {
     const d = new Date(Date.now() + 20 * 60 * 1000);
@@ -609,7 +617,7 @@ function PickupInfo() {
           <MapPin className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1 text-sm">
-          <div className="font-semibold">{restaurant.name}</div>
+          <div className="font-semibold">{restaurant?.name ?? "Restaurante"}</div>
           {p ? (
             <>
               <div className="text-foreground/70">

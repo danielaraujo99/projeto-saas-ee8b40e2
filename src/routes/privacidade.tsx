@@ -1,15 +1,15 @@
 import * as React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-import { restaurant } from "@/data/restaurant";
+const BRAND_NAME = "MenuAtlas";
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: `Política de Privacidade — ${restaurant.name}` },
-      { name: "description", content: `Como o ${restaurant.name} coleta, usa e protege seus dados pessoais.` },
-      { property: "og:title", content: `Política de Privacidade — ${restaurant.name}` },
-      { property: "og:description", content: `Como o ${restaurant.name} coleta, usa e protege seus dados pessoais.` },
+      { title: `Política de Privacidade — ${BRAND_NAME}` },
+      { name: "description", content: `Como o ${BRAND_NAME} coleta, usa e protege seus dados pessoais.` },
+      { property: "og:title", content: `Política de Privacidade — ${BRAND_NAME}` },
+      { property: "og:description", content: `Como o ${BRAND_NAME} coleta, usa e protege seus dados pessoais.` },
     ],
   }),
   component: PrivacidadePage,
@@ -47,7 +47,7 @@ function PrivacidadePage() {
 
           <div className="space-y-5 text-sm leading-relaxed text-foreground/80">
             <Section title="1. Quem somos">
-              Esta política descreve como o {restaurant.name}, na condição de controlador dos dados, trata as informações
+              Esta política descreve como o {BRAND_NAME}, na condição de controlador dos dados, trata as informações
               pessoais coletadas por meio desta plataforma.
             </Section>
 

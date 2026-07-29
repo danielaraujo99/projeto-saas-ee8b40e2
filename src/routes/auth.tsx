@@ -7,15 +7,15 @@ import { useAuth } from "@/store/auth";
 import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft, Loader2, UtensilsCrossed, Sparkles, Clock, BadgePercent } from "lucide-react";
 import { toast } from "sonner";
 import loginBg from "@/assets/login-bg.mp4.asset.json";
-import { restaurant } from "@/data/restaurant";
+const BRAND_NAME = "MenuAtlas";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: `Entrar — ${restaurant.name}` },
-      { name: "description", content: `Acesse sua conta para pedir no ${restaurant.name}: acompanhe pedidos, use cupons e finalize em poucos toques.` },
-      { property: "og:title", content: `Entrar — ${restaurant.name}` },
-      { property: "og:description", content: `Acesse sua conta para pedir no ${restaurant.name}: acompanhe pedidos, use cupons e finalize em poucos toques.` },
+      { title: `Entrar — ${BRAND_NAME}` },
+      { name: "description", content: `Acesse sua conta para pedir no ${BRAND_NAME}: acompanhe pedidos, use cupons e finalize em poucos toques.` },
+      { property: "og:title", content: `Entrar — ${BRAND_NAME}` },
+      { property: "og:description", content: `Acesse sua conta para pedir no ${BRAND_NAME}: acompanhe pedidos, use cupons e finalize em poucos toques.` },
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -97,7 +97,7 @@ function AuthPage() {
           </div>
           <div className="leading-tight">
             <p className="text-xs uppercase tracking-[0.2em] text-white/70">Cardápio digital</p>
-            <p className="text-lg font-bold">{restaurant.name}</p>
+            <p className="text-lg font-bold">{BRAND_NAME}</p>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ function AuthPage() {
         </div>
 
         <p className="relative text-xs text-white/60">
-          © {new Date().getFullYear()} {restaurant.name} · Feito para quem ama comer bem.
+          © {new Date().getFullYear()} {BRAND_NAME} · Feito para quem ama comer bem.
         </p>
       </div>
 
@@ -150,7 +150,7 @@ function AuthPage() {
             </div>
             <div className="leading-tight">
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Cardápio digital</p>
-              <p className="text-base font-bold">{restaurant.name}</p>
+              <p className="text-base font-bold">{BRAND_NAME}</p>
             </div>
           </div>
 

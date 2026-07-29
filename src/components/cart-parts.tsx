@@ -6,7 +6,7 @@ import { QuantityStepper } from "@/components/quantity-stepper";
 import { brl } from "@/lib/format";
 import type { CartItem, Product } from "@/types";
 import { useMenu } from "@/components/menu-context";
-import { restaurant } from "@/data/restaurant";
+import { useCartRestaurant } from "@/lib/use-cart-restaurant";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -146,13 +146,21 @@ export function CouponBox() {
   const coupon = useCart((s) => s.coupon);
   const applyCoupon = useCart((s) => s.applyCoupon);
   const removeCoupon = useCart((s) => s.removeCoupon);
+  const restaurantId = useCart((s) => s.restaurantId);
   const [code, setCode] = React.useState("");
   const [msg, setMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = React.useState(false);
 
-  const apply = () => {
-    const res = applyCoupon(code);
-    setMsg({ ok: res.ok, text: res.message });
-    if (res.ok) toast.success("Cupom aplicado com sucesso");
+  const apply = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await applyCoupon(code);
+      setMsg({ ok: res.ok, text: res.message });
+      if (res.ok) toast.success("Cupom aplicado com sucesso");
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (coupon) {
@@ -184,13 +192,14 @@ export function CouponBox() {
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="Cupom de desconto"
           className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+          disabled={busy}
         />
         <button
           onClick={apply}
-          disabled={!code.trim()}
+          disabled={!code.trim() || busy || !restaurantId}
           className="h-10 rounded-lg border border-primary px-4 text-sm font-semibold text-primary hover:bg-primary-soft disabled:opacity-40"
         >
-          Aplicar
+          {busy ? "Validando…" : "Aplicar"}
         </button>
       </div>
       {msg ? (
@@ -209,7 +218,8 @@ export function OrderSummary({
 }) {
   const subtotal = useCart((s) => s.subtotal());
   const discount = useCart((s) => s.discount());
-  const fee = restaurant.deliveryFee;
+  const { restaurant } = useCartRestaurant();
+  const fee = restaurant?.deliveryFee ?? 0;
   const total = Math.max(0, subtotal - discount) + fee;
 
   return (

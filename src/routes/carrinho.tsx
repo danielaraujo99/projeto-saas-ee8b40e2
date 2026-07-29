@@ -8,7 +8,7 @@ import { ProductSheet } from "@/components/product-sheet";
 import type { Product } from "@/types";
 import { useAuth } from "@/store/auth";
 import { AuthGate } from "@/components/auth-gate";
-import { restaurant } from "@/data/restaurant";
+import { useCartRestaurant } from "@/lib/use-cart-restaurant";
 import { brl } from "@/lib/format";
 import {
   AlertDialog,
@@ -24,9 +24,9 @@ import {
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
     meta: [
-      { title: "Seu carrinho — Restaurante Demo" },
+      { title: "Seu carrinho — MenuAtlas" },
       { name: "description", content: "Revise seu pedido antes de finalizar." },
-      { property: "og:title", content: "Seu carrinho — Restaurante Demo" },
+      { property: "og:title", content: "Seu carrinho — MenuAtlas" },
       { property: "og:description", content: "Revise seu pedido antes de finalizar." },
     ],
   }),
@@ -43,12 +43,15 @@ function CarrinhoPage() {
   const [closedOpen, setClosedOpen] = React.useState(false);
   const user = useAuth((s) => s.user);
   const navigate = useNavigate();
+  const { restaurant } = useCartRestaurant();
+  const minimumOrder = restaurant?.minimumOrder ?? 0;
+  const isOpen = restaurant?.isOpen ?? true;
 
   const effectiveSubtotal = Math.max(0, subtotal - discount);
-  const missingForMin = Math.max(0, restaurant.minimumOrder - effectiveSubtotal);
+  const missingForMin = Math.max(0, minimumOrder - effectiveSubtotal);
 
   const goCheckout = () => {
-    if (!restaurant.isOpen) return setClosedOpen(true);
+    if (!isOpen) return setClosedOpen(true);
     if (missingForMin > 0) return setMinOpen(true);
     if (!user) return setAuthOpen(true);
     navigate({ to: "/checkout" });
@@ -126,7 +129,7 @@ function CarrinhoPage() {
             <AlertDialogDescription className="text-center">
               Este restaurante exige um pedido mínimo de{" "}
               <span className="font-semibold text-foreground">
-                {brl(restaurant.minimumOrder)}
+                {brl(minimumOrder)}
               </span>
               . Faltam <span className="font-semibold text-foreground">{brl(missingForMin)}</span>{" "}
               para finalizar.
