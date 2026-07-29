@@ -8,7 +8,7 @@ import { ProductSheet } from "@/components/product-sheet";
 import type { Product } from "@/types";
 import { useAuth } from "@/store/auth";
 import { AuthGate } from "@/components/auth-gate";
-import { restaurant } from "@/data/restaurant";
+import { useCartRestaurant } from "@/lib/use-cart-restaurant";
 import { brl } from "@/lib/format";
 import {
   AlertDialog,
