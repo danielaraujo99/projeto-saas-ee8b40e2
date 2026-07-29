@@ -129,7 +129,7 @@ function CarrinhoPage() {
             <AlertDialogDescription className="text-center">
               Este restaurante exige um pedido mínimo de{" "}
               <span className="font-semibold text-foreground">
-                {brl(restaurant.minimumOrder)}
+                {brl(minimumOrder)}
               </span>
               . Faltam <span className="font-semibold text-foreground">{brl(missingForMin)}</span>{" "}
               para finalizar.
