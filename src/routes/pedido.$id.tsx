@@ -610,6 +610,13 @@ const PAYMENT_LABEL: Record<string, string> = {
 function FinishedOrderView({ order, canceled }: { order: OrderRow; canceled?: boolean }) {
   const nav = useNavigate();
   const addItem = useCart((s) => s.addItem);
+  const { data: brand } = useQuery({
+    queryKey: ["order-brand", order.restaurant_id],
+    queryFn: () => fetchRestaurantDisplay({ id: order.restaurant_id }),
+    enabled: !!order.restaurant_id,
+    staleTime: 60_000,
+  });
+
 
   const placedAt = new Date(order.created_at);
   const dateLine = `${placedAt.toLocaleDateString("pt-BR")} · ${formatTime(placedAt)}`;
