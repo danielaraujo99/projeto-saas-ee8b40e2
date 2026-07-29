@@ -24,9 +24,9 @@ import {
 export const Route = createFileRoute("/carrinho")({
   head: () => ({
     meta: [
-      { title: "Seu carrinho — Restaurante Demo" },
+      { title: "Seu carrinho — MenuAtlas" },
       { name: "description", content: "Revise seu pedido antes de finalizar." },
-      { property: "og:title", content: "Seu carrinho — Restaurante Demo" },
+      { property: "og:title", content: "Seu carrinho — MenuAtlas" },
       { property: "og:description", content: "Revise seu pedido antes de finalizar." },
     ],
   }),
@@ -43,12 +43,15 @@ function CarrinhoPage() {
   const [closedOpen, setClosedOpen] = React.useState(false);
   const user = useAuth((s) => s.user);
   const navigate = useNavigate();
+  const { restaurant } = useCartRestaurant();
+  const minimumOrder = restaurant?.minimumOrder ?? 0;
+  const isOpen = restaurant?.isOpen ?? true;
 
   const effectiveSubtotal = Math.max(0, subtotal - discount);
-  const missingForMin = Math.max(0, restaurant.minimumOrder - effectiveSubtotal);
+  const missingForMin = Math.max(0, minimumOrder - effectiveSubtotal);
 
   const goCheckout = () => {
-    if (!restaurant.isOpen) return setClosedOpen(true);
+    if (!isOpen) return setClosedOpen(true);
     if (missingForMin > 0) return setMinOpen(true);
     if (!user) return setAuthOpen(true);
     navigate({ to: "/checkout" });
