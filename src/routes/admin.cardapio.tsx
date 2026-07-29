@@ -382,6 +382,13 @@ function ProductSheet({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Informe o nome");
       if (price < 0) throw new Error("Preço inválido");
+      if (!categoryId) {
+        throw new Error(
+          categories.length === 0
+            ? "Crie uma categoria antes de cadastrar produtos."
+            : "Selecione uma categoria para o produto.",
+        );
+      }
       // valida grupos
       for (const g of groups) {
         if (!g.name.trim()) throw new Error("Todo grupo precisa de nome");
