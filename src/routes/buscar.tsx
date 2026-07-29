@@ -1,17 +1,19 @@
 import * as React from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Search as SearchIcon, SearchX, Star, Clock, MapPin } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search as SearchIcon, SearchX, Star, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { restaurant } from "@/data/restaurant";
+import { listActiveRestaurants } from "@/lib/storefront";
 import { EmptyState } from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/buscar")({
   head: () => ({
     meta: [
-      { title: "Buscar restaurantes — Restaurante Demo" },
+      { title: "Buscar restaurantes — MenuAtlas" },
       { name: "description", content: "Descubra restaurantes e lanchonetes perto de você." },
-      { property: "og:title", content: "Buscar restaurantes — Restaurante Demo" },
+      { property: "og:title", content: "Buscar restaurantes — MenuAtlas" },
       { property: "og:description", content: "Descubra restaurantes e lanchonetes perto de você." },
     ],
   }),
@@ -20,39 +22,21 @@ export const Route = createFileRoute("/buscar")({
 
 const SUGGESTIONS = ["Hambúrguer", "Pizza", "Japonesa", "Açaí", "Vegana", "Doces"];
 
-type Card = {
-  id: string;
-  name: string;
-  tagline: string;
-  rating: number;
-  minutes: [number, number];
-  distanceKm: number;
-  cover: string;
-  category: string;
-};
-
-const CARDS: Card[] = [
-  {
-    id: restaurant.id,
-    name: restaurant.name,
-    tagline: restaurant.tagline,
-    rating: restaurant.rating,
-    minutes: restaurant.deliveryMinutes,
-    distanceKm: restaurant.distanceKm,
-    cover: restaurant.cover,
-    category: "Hambúrguer",
-  },
-];
-
 function Page() {
   const [q, setQ] = React.useState("");
+  const { data: cards = [], isLoading } = useQuery({
+    queryKey: ["active-restaurants"],
+    queryFn: listActiveRestaurants,
+    staleTime: 60_000,
+  });
+
   const results = React.useMemo(() => {
-    if (!q.trim()) return CARDS;
+    if (!q.trim()) return cards;
     const s = q.toLowerCase();
-    return CARDS.filter(
-      (c) => c.name.toLowerCase().includes(s) || c.category.toLowerCase().includes(s),
+    return cards.filter(
+      (c) => c.name.toLowerCase().includes(s) || (c.category ?? "").toLowerCase().includes(s),
     );
-  }, [q]);
+  }, [q, cards]);
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pt-20">
@@ -88,15 +72,23 @@ function Page() {
           ))}
         </div>
 
-        {results.length === 0 ? (
+        {isLoading ? (
+          <ul className="mt-6 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <li key={i}>
+                <Skeleton className="h-24 w-full rounded-2xl" />
+              </li>
+            ))}
+          </ul>
+        ) : results.length === 0 ? (
           <EmptyState
             className="my-8"
             icon={<SearchX className="h-6 w-6" />}
-            title="Nenhum resultado encontrado"
+            title="Nenhum restaurante encontrado"
             description={
               q.trim()
-                ? `Não encontramos nada para “${q.trim()}”. Tente outro termo ou uma das sugestões acima.`
-                : "Tente buscar por outro termo ou uma das sugestões acima."
+                ? `Não encontramos nada para "${q.trim()}". Tente outro termo.`
+                : "Nenhum restaurante ativo no momento."
             }
           />
         ) : (
@@ -110,7 +102,8 @@ function Page() {
               {results.map((c) => (
                 <li key={c.id}>
                   <Link
-                    to="/demo"
+                    to="/$slug"
+                    params={{ slug: c.slug }}
                     className="flex gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-elevated)]"
                   >
                     <div
@@ -119,16 +112,15 @@ function Page() {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="text-base font-bold text-foreground">{c.name}</div>
-                      <div className="line-clamp-1 text-xs text-foreground/60">{c.tagline}</div>
+                      {c.category ? (
+                        <div className="line-clamp-1 text-xs text-foreground/60">{c.category}</div>
+                      ) : null}
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-foreground/70">
                         <span className="inline-flex items-center gap-1">
                           <Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}
                         </span>
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3" /> {c.minutes[0]}–{c.minutes[1]} min
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {c.distanceKm.toFixed(1)} km
                         </span>
                       </div>
                     </div>
