@@ -139,22 +139,8 @@ export function ComingSoon() {
             </div>
           </div>
 
-          {/* Marquee */}
-          <div className="fade-up mt-24 overflow-hidden border-y border-[#e9e4d8]/10 py-5" style={{ animationDelay: "380ms" }}>
-            <div className="marquee flex min-w-max gap-14 text-[13px] uppercase tracking-[0.35em] text-[#e9e4d8]/40">
-              {[...MANIFEST, ...MANIFEST, ...MANIFEST].map((w, i) => (
-                <span key={i} className="flex items-center gap-14">
-                  <span
-                    className="text-[#c9a86a]/80"
-                    style={{ fontFamily: "'Instrument Serif', serif", fontStyle: "italic" }}
-                  >
-                    {w}
-                  </span>
-                  <span aria-hidden className="text-[#e9e4d8]/20">✦</span>
-                </span>
-              ))}
-            </div>
-          </div>
+
+
         </main>
 
         {/* Footer */}
