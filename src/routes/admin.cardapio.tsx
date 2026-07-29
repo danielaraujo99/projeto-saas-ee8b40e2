@@ -539,16 +539,26 @@ function ProductSheet({
                   <Input type="number" step="0.10" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
                 </label>
                 <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-                  <span>Categoria</span>
+                  <span>
+                    Categoria <span className="text-rose-500">*</span>
+                  </span>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {!categoryId && (
+                    <span className="text-[11px] font-normal text-rose-500">
+                      {categories.length === 0
+                        ? "Crie uma categoria antes de cadastrar produtos."
+                        : "Obrigatório — sem categoria o produto não aparece no cardápio."}
+                    </span>
+                  )}
                 </label>
+
               </div>
 
               {/* Upload de imagem */}
