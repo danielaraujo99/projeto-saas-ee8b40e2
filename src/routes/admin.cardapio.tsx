@@ -404,7 +404,7 @@ function ProductSheet({
         name: name.trim(),
         description: description.trim() || null,
         price,
-        category_id: categoryId || null,
+        category_id: categoryId,
         image_url: imageUrl.trim() || null,
         active,
         featured,
