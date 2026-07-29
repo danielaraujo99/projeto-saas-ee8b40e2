@@ -4,7 +4,7 @@ import { brl } from "@/lib/format";
 import { ProductBadgePill } from "@/components/product-badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { restaurant } from "@/data/restaurant";
+import { useRestaurant } from "@/components/menu-context";
 
 type Props = {
   product: Product;
@@ -14,7 +14,8 @@ type Props = {
 
 export function ProductCard({ product, onClick }: Props) {
   const disabled = product.available === false;
-  const closed = !restaurant.isOpen;
+  const restaurant = useRestaurant();
+  const closed = restaurant ? !restaurant.isOpen : false;
   return (
     <button
       type="button"
