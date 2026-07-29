@@ -51,12 +51,15 @@ USING (
 -- Move cada produto sem categoria para a 1ª categoria do próprio restaurante.
 -- ============================================================
 UPDATE public.products p
-SET category_id = c.id
-FROM LATERAL (
+SET category_id = (
   SELECT c.id
   FROM public.categories c
   WHERE c.restaurant_id = p.restaurant_id
   ORDER BY c.sort_order NULLS LAST, c.created_at
   LIMIT 1
-) c
-WHERE p.category_id IS NULL;
+)
+WHERE p.category_id IS NULL
+  AND EXISTS (
+    SELECT 1 FROM public.categories c
+    WHERE c.restaurant_id = p.restaurant_id
+  );
