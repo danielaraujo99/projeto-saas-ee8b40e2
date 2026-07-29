@@ -38,7 +38,7 @@ export function ComingSoon() {
     : "";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0b] text-[#e9e4d8] antialiased">
+    <div className="relative min-h-screen overflow-hidden bg-black text-[#e9e4d8] antialiased">
       <link
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
