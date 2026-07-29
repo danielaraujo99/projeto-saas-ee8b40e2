@@ -1,15 +1,15 @@
 import * as React from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileText } from "lucide-react";
-import { restaurant } from "@/data/restaurant";
+const BRAND_NAME = "MenuAtlas";
 
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: `Termos de Uso — ${restaurant.name}` },
-      { name: "description", content: `Termos de uso da plataforma de pedidos ${restaurant.name}.` },
-      { property: "og:title", content: `Termos de Uso — ${restaurant.name}` },
-      { property: "og:description", content: `Termos de uso da plataforma de pedidos ${restaurant.name}.` },
+      { title: `Termos de Uso — ${BRAND_NAME}` },
+      { name: "description", content: `Termos de uso da plataforma de pedidos ${BRAND_NAME}.` },
+      { property: "og:title", content: `Termos de Uso — ${BRAND_NAME}` },
+      { property: "og:description", content: `Termos de uso da plataforma de pedidos ${BRAND_NAME}.` },
     ],
   }),
   component: TermosPage,
@@ -90,7 +90,7 @@ function TermosPage() {
             </Section>
 
             <Section title="9. Contato">
-              Dúvidas sobre estes termos? Fale com {restaurant.name} pelos canais de atendimento informados no rodapé.
+              Dúvidas sobre estes termos? Fale com {BRAND_NAME} pelos canais de atendimento informados no rodapé.
             </Section>
           </div>
         </section>
