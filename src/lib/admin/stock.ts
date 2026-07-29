@@ -24,6 +24,33 @@ export type StockMovement = {
   created_at: string;
 };
 
+/**
+ * A tabela real usa `quantity` / `min_quantity`. A UI usa `qty` / `min_qty`.
+ * O mapeamento fica isolado aqui — o schema do banco é a fonte de verdade.
+ */
+function fromDbItem(i: any): StockItem {
+  return {
+    id: i.id,
+    restaurant_id: i.restaurant_id,
+    name: i.name,
+    unit: i.unit ?? "un",
+    qty: Number(i.quantity ?? 0),
+    min_qty: Number(i.min_quantity ?? 0),
+    cost: Number(i.cost ?? 0),
+  };
+}
+
+function toDbItem(p: Partial<StockItem> & Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  if (p.restaurant_id !== undefined) out.restaurant_id = p.restaurant_id;
+  if (p.name !== undefined) out.name = p.name;
+  if (p.unit !== undefined) out.unit = p.unit;
+  if (p.qty !== undefined) out.quantity = p.qty;
+  if (p.min_qty !== undefined) out.min_quantity = p.min_qty;
+  if (p.cost !== undefined) out.cost = p.cost;
+  return out;
+}
+
 export async function listStockItems(restaurantId: string): Promise<StockItem[]> {
   const { data, error } = await sb
     .from("stock_items")
@@ -31,12 +58,7 @@ export async function listStockItems(restaurantId: string): Promise<StockItem[]>
     .eq("restaurant_id", restaurantId)
     .order("name", { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as any[]).map((i) => ({
-    ...i,
-    qty: Number(i.qty),
-    min_qty: Number(i.min_qty),
-    cost: Number(i.cost),
-  })) as StockItem[];
+  return ((data ?? []) as any[]).map(fromDbItem);
 }
 
 export async function createStockItem(input: {
@@ -47,12 +69,12 @@ export async function createStockItem(input: {
   min_qty: number;
   cost: number;
 }) {
-  const { error } = await sb.from("stock_items").insert(input);
+  const { error } = await sb.from("stock_items").insert(toDbItem(input));
   if (error) throw error;
 }
 
 export async function updateStockItem(id: string, patch: Partial<StockItem>) {
-  const { error } = await sb.from("stock_items").update(patch).eq("id", id);
+  const { error } = await sb.from("stock_items").update(toDbItem(patch)).eq("id", id);
   if (error) throw error;
 }
 
@@ -60,6 +82,7 @@ export async function deleteStockItem(id: string) {
   const { error } = await sb.from("stock_items").delete().eq("id", id);
   if (error) throw error;
 }
+
 
 export async function listMovements(
   restaurantId: string,
@@ -90,11 +113,11 @@ export async function registerMovement(input: {
 }) {
   const { data: item, error: e1 } = await sb
     .from("stock_items")
-    .select("qty")
+    .select("quantity")
     .eq("id", input.item_id)
     .maybeSingle();
   if (e1) throw e1;
-  const current = Number(item?.qty ?? 0);
+  const current = Number(item?.quantity ?? 0);
   const delta =
     input.kind === "in" ? input.qty : input.kind === "out" ? -input.qty : input.qty - current;
   const newQty =
@@ -111,7 +134,7 @@ export async function registerMovement(input: {
   if (e2) throw e2;
   const { error: e3 } = await sb
     .from("stock_items")
-    .update({ qty: newQty })
+    .update({ quantity: newQty })
     .eq("id", input.item_id);
   if (e3) throw e3;
 }

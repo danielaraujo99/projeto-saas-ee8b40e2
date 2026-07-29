@@ -175,11 +175,16 @@ function CardapioPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900">{p.name}</div>
-                          {cat && (
+                          {cat ? (
                             <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                               {cat.name}
                             </div>
+                          ) : (
+                            <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                              Sem categoria · não aparece no cardápio
+                            </div>
                           )}
+
                         </div>
                         {!p.active && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
@@ -382,6 +387,13 @@ function ProductSheet({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Informe o nome");
       if (price < 0) throw new Error("Preço inválido");
+      if (!categoryId) {
+        throw new Error(
+          categories.length === 0
+            ? "Crie uma categoria antes de cadastrar produtos."
+            : "Selecione uma categoria para o produto.",
+        );
+      }
       // valida grupos
       for (const g of groups) {
         if (!g.name.trim()) throw new Error("Todo grupo precisa de nome");
@@ -397,7 +409,7 @@ function ProductSheet({
         name: name.trim(),
         description: description.trim() || null,
         price,
-        category_id: categoryId || null,
+        category_id: categoryId,
         image_url: imageUrl.trim() || null,
         active,
         featured,
@@ -532,16 +544,26 @@ function ProductSheet({
                   <Input type="number" step="0.10" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
                 </label>
                 <label className="grid gap-1.5 text-xs font-medium text-slate-600">
-                  <span>Categoria</span>
+                  <span>
+                    Categoria <span className="text-rose-500">*</span>
+                  </span>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger><SelectValue placeholder="Sem categoria" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {!categoryId && (
+                    <span className="text-[11px] font-normal text-rose-500">
+                      {categories.length === 0
+                        ? "Crie uma categoria antes de cadastrar produtos."
+                        : "Obrigatório — sem categoria o produto não aparece no cardápio."}
+                    </span>
+                  )}
                 </label>
+
               </div>
 
               {/* Upload de imagem */}
@@ -772,7 +794,7 @@ function ProductSheet({
           ) : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending || uploading}>
+            <Button onClick={() => save.mutate()} disabled={save.isPending || uploading || !categoryId}>
               {save.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</> : "Salvar"}
             </Button>
           </div>
