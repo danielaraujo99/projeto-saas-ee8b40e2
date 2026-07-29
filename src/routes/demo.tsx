@@ -58,6 +58,7 @@ function DemoPage() {
       restaurantId={q.data.restaurantId}
       restaurantSlug={q.data.slug}
       restaurantName={q.data.restaurantName}
+      restaurant={q.data.restaurant}
     >
       <HomePage />
     </MenuProvider>
