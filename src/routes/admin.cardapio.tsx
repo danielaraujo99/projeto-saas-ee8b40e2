@@ -175,11 +175,16 @@ function CardapioPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900">{p.name}</div>
-                          {cat && (
+                          {cat ? (
                             <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                               {cat.name}
                             </div>
+                          ) : (
+                            <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                              Sem categoria · não aparece no cardápio
+                            </div>
                           )}
+
                         </div>
                         {!p.active && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
