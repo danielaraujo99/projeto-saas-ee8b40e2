@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CartCustomization, CartItem, Coupon } from "@/types";
-import { coupons as allCoupons } from "@/data/coupons";
+import { supabase } from "@/lib/custom-supabase";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const sb = supabase as any;
 
 const unit = (base: number, cs: CartCustomization[]) =>
   base + cs.reduce((s, c) => s + c.priceDelta, 0);
@@ -20,7 +23,7 @@ type CartState = {
   removeItem: (id: string) => void;
   duplicateItem: (id: string) => void;
   clear: () => void;
-  applyCoupon: (code: string) => { ok: boolean; message: string };
+  applyCoupon: (code: string) => Promise<{ ok: boolean; message: string }>;
   removeCoupon: () => void;
   subtotal: () => number;
   discount: () => number;
@@ -39,7 +42,6 @@ export const useCart = create<CartState>()(
         const id = crypto.randomUUID();
         const unitPrice = unit(item.basePrice, item.customizations);
         const state = get();
-        // Se a sacola pertence a outro restaurante, reinicia antes de adicionar.
         const differentRestaurant =
           !!(restaurant?.id && state.restaurantId && restaurant.id !== state.restaurantId);
         const baseItems = differentRestaurant ? [] : state.items;
@@ -92,17 +94,52 @@ export const useCart = create<CartState>()(
           restaurantSlug: undefined,
           restaurantName: undefined,
         }),
-      applyCoupon: (code) => {
-        const found = allCoupons.find((c) => c.code.toLowerCase() === code.trim().toLowerCase());
-        if (!found) return { ok: false, message: "Cupom inválido." };
+      applyCoupon: async (code) => {
+        const rid = get().restaurantId;
+        if (!rid) {
+          return { ok: false, message: "Adicione itens ao carrinho antes de aplicar um cupom." };
+        }
+        const upper = code.trim().toUpperCase();
+        if (!upper) return { ok: false, message: "Informe um cupom." };
+        const { data, error } = await sb
+          .from("coupons")
+          .select(
+            "code,kind,amount,min_order_value,description,active,valid_from,valid_to,usage_limit,used_count",
+          )
+          .eq("restaurant_id", rid)
+          .eq("active", true)
+          .ilike("code", upper)
+          .maybeSingle();
+        if (error) return { ok: false, message: "Não foi possível validar o cupom." };
+        if (!data) return { ok: false, message: "Cupom inválido para este restaurante." };
+        const now = Date.now();
+        if (data.valid_from && new Date(data.valid_from).getTime() > now) {
+          return { ok: false, message: "Cupom ainda não está válido." };
+        }
+        if (data.valid_to && new Date(data.valid_to).getTime() < now) {
+          return { ok: false, message: "Cupom expirado." };
+        }
+        if (data.usage_limit != null && Number(data.used_count ?? 0) >= Number(data.usage_limit)) {
+          return { ok: false, message: "Cupom esgotado." };
+        }
+        const min = Number(data.min_order_value ?? 0);
         const sub = get().subtotal();
-        if (found.minOrder && sub < found.minOrder)
+        if (min && sub < min) {
           return {
             ok: false,
-            message: `Pedido mínimo de R$ ${found.minOrder.toFixed(2)} para este cupom.`,
+            message: `Pedido mínimo de R$ ${min.toFixed(2)} para este cupom.`,
           };
-        set({ coupon: found });
-        return { ok: true, message: `Cupom aplicado: ${found.description}` };
+        }
+        const kind = (data.kind === "fixed" ? "fixed" : "percent") as Coupon["kind"];
+        const coupon: Coupon = {
+          code: String(data.code).toUpperCase(),
+          kind,
+          value: Number(data.amount ?? 0),
+          minOrder: min || undefined,
+          description: data.description ?? `Cupom ${data.code}`,
+        };
+        set({ coupon });
+        return { ok: true, message: `Cupom aplicado: ${coupon.description}` };
       },
       removeCoupon: () => set({ coupon: undefined }),
       subtotal: () => get().items.reduce((s, it) => s + it.unitPrice * it.quantity, 0),

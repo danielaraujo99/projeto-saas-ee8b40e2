@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Category, Product } from "@/types";
+import type { Category, Product, Restaurant } from "@/types";
 import { categories as staticCategories, products as staticProducts } from "@/data/menu";
 
 type MenuContextValue = {
@@ -9,6 +9,7 @@ type MenuContextValue = {
   restaurantId?: string;
   restaurantSlug?: string;
   restaurantName?: string;
+  restaurant?: Restaurant;
 };
 
 const MenuContext = React.createContext<MenuContextValue | null>(null);
@@ -19,6 +20,7 @@ export function MenuProvider({
   restaurantId,
   restaurantSlug,
   restaurantName,
+  restaurant,
   children,
 }: {
   categories: Category[];
@@ -26,6 +28,7 @@ export function MenuProvider({
   restaurantId?: string;
   restaurantSlug?: string;
   restaurantName?: string;
+  restaurant?: Restaurant;
   children: React.ReactNode;
 }) {
   const value = React.useMemo<MenuContextValue>(() => {
@@ -37,8 +40,9 @@ export function MenuProvider({
       restaurantId,
       restaurantSlug,
       restaurantName,
+      restaurant,
     };
-  }, [categories, products, restaurantId, restaurantSlug, restaurantName]);
+  }, [categories, products, restaurantId, restaurantSlug, restaurantName, restaurant]);
   return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;
 }
 
@@ -54,10 +58,6 @@ export function useMenu(): MenuContextValue {
   };
 }
 
-/**
- * Retorna o restaurante ativo (id/slug) resolvido pelo contexto de cardápio da
- * navegação atual. Retorna null quando não há contexto (ex.: rotas estáticas).
- */
 export function useActiveRestaurant(): {
   id?: string;
   slug?: string;
@@ -66,4 +66,10 @@ export function useActiveRestaurant(): {
   const ctx = React.useContext(MenuContext);
   if (!ctx) return null;
   return { id: ctx.restaurantId, slug: ctx.restaurantSlug, name: ctx.restaurantName };
+}
+
+/** Restaurante real do tenant atual (via MenuProvider). Undefined fora dele. */
+export function useRestaurant(): Restaurant | undefined {
+  const ctx = React.useContext(MenuContext);
+  return ctx?.restaurant;
 }
