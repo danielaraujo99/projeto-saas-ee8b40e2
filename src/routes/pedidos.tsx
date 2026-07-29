@@ -25,7 +25,7 @@ import {
 import { listMyOrders, type OrderRow } from "@/lib/orders-api";
 import { statusLabel, type OrderStatus, ACTIVE_STATUSES } from "@/lib/order-status";
 import { brl } from "@/lib/format";
-import { restaurant } from "@/data/restaurant";
+import { fetchRestaurantsBrief } from "@/lib/storefront";
 import { useCart } from "@/store/cart";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -35,9 +35,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/pedidos")({
   head: () => ({
     meta: [
-      { title: "Meus pedidos — Restaurante Demo" },
+      { title: "Meus pedidos — MenuAtlas" },
       { name: "description", content: "Veja seus pedidos em andamento e o histórico completo." },
-      { property: "og:title", content: "Meus pedidos — Restaurante Demo" },
+      { property: "og:title", content: "Meus pedidos — MenuAtlas" },
       { property: "og:description", content: "Veja seus pedidos em andamento e o histórico completo." },
     ],
   }),
@@ -102,6 +102,17 @@ function Page() {
   const list = tab === "active" ? active : past;
   const groups = React.useMemo(() => groupByDay(list), [list]);
 
+  const restaurantIds = React.useMemo(
+    () => Array.from(new Set(orders.map((o) => o.restaurant_id).filter(Boolean))),
+    [orders],
+  );
+  const { data: brands } = useQuery({
+    queryKey: ["orders-brands", restaurantIds.join(",")],
+    queryFn: () => fetchRestaurantsBrief(restaurantIds),
+    enabled: restaurantIds.length > 0,
+    staleTime: 60_000,
+  });
+
   return (
     <div className="min-h-screen bg-background pb-24 md:pt-20">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur md:static md:border-0">
@@ -164,7 +175,7 @@ function Page() {
                 </h2>
                 <ul className="space-y-3">
                   {g.orders.map((o) => (
-                    <OrderCard key={o.id} order={o} />
+                    <OrderCard key={o.id} order={o} brand={brands?.[o.restaurant_id]} />
                   ))}
                 </ul>
               </section>
