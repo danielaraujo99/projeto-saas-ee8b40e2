@@ -233,7 +233,7 @@ function usePixTick(active: boolean) {
 /* Card                                                                */
 /* ------------------------------------------------------------------ */
 
-function OrderCard({ order }: { order: OrderRow }) {
+function OrderCard({ order, brand }: { order: OrderRow; brand?: { name: string; logo: string; slug: string } }) {
   const nav = useNavigate();
   const addItem = useCart((s) => s.addItem);
   const [session, setSession] = React.useState<PixSession | null>(null);
@@ -293,13 +293,13 @@ function OrderCard({ order }: { order: OrderRow }) {
           className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 pt-4 text-left"
         >
           <img
-            src={restaurant.logo}
+            src={brand?.logo ?? "/placeholder.svg"}
             alt=""
             loading="lazy"
             className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border"
           />
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-foreground">{restaurant.name}</div>
+            <div className="truncate text-sm font-bold text-foreground">{brand?.name ?? "Restaurante"}</div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <StatusDot expired={expired} delivered={delivered} />
               <span
