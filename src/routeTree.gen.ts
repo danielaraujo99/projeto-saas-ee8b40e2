@@ -25,6 +25,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PedidoIdRouteImport } from './routes/pedido.$id'
 import { Route as PagamentoIdRouteImport } from './routes/pagamento.$id'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos.novo'
+import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as AdminSelecionarRestauranteRouteImport } from './routes/admin.selecionar-restaurante'
 import { Route as AdminRedefinirSenhaRouteImport } from './routes/admin.redefinir-senha'
 import { Route as AdminRecuperarSenhaRouteImport } from './routes/admin.recuperar-senha'
@@ -128,6 +129,11 @@ const EnderecosNovoRoute = EnderecosNovoRouteImport.update({
   id: '/novo',
   path: '/novo',
   getParentRoute: () => EnderecosRoute,
+} as any)
+const ConviteTokenRoute = ConviteTokenRouteImport.update({
+  id: '/convite/$token',
+  path: '/convite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSelecionarRestauranteRoute =
   AdminSelecionarRestauranteRouteImport.update({
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/admin/recuperar-senha': typeof AdminRecuperarSenhaRoute
   '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/selecionar-restaurante': typeof AdminSelecionarRestauranteRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/pagamento/$id': typeof PagamentoIdRoute
   '/pedido/$id': typeof PedidoIdRouteWithChildren
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/admin/recuperar-senha': typeof AdminRecuperarSenhaRoute
   '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/selecionar-restaurante': typeof AdminSelecionarRestauranteRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/pagamento/$id': typeof PagamentoIdRoute
   '/pedido/$id': typeof PedidoIdRouteWithChildren
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   '/admin/recuperar-senha': typeof AdminRecuperarSenhaRoute
   '/admin/redefinir-senha': typeof AdminRedefinirSenhaRoute
   '/admin/selecionar-restaurante': typeof AdminSelecionarRestauranteRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/pagamento/$id': typeof PagamentoIdRoute
   '/pedido/$id': typeof PedidoIdRouteWithChildren
@@ -405,6 +414,7 @@ export interface FileRouteTypes {
     | '/admin/recuperar-senha'
     | '/admin/redefinir-senha'
     | '/admin/selecionar-restaurante'
+    | '/convite/$token'
     | '/enderecos/novo'
     | '/pagamento/$id'
     | '/pedido/$id'
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/admin/recuperar-senha'
     | '/admin/redefinir-senha'
     | '/admin/selecionar-restaurante'
+    | '/convite/$token'
     | '/enderecos/novo'
     | '/pagamento/$id'
     | '/pedido/$id'
@@ -487,6 +498,7 @@ export interface FileRouteTypes {
     | '/admin/recuperar-senha'
     | '/admin/redefinir-senha'
     | '/admin/selecionar-restaurante'
+    | '/convite/$token'
     | '/enderecos/novo'
     | '/pagamento/$id'
     | '/pedido/$id'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   AdminRecuperarSenhaRoute: typeof AdminRecuperarSenhaRoute
   AdminRedefinirSenhaRoute: typeof AdminRedefinirSenhaRoute
   AdminSelecionarRestauranteRoute: typeof AdminSelecionarRestauranteRoute
+  ConviteTokenRoute: typeof ConviteTokenRoute
   PagamentoIdRoute: typeof PagamentoIdRoute
   PedidoIdRoute: typeof PedidoIdRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
@@ -648,6 +661,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/enderecos/novo'
       preLoaderRoute: typeof EnderecosNovoRouteImport
       parentRoute: typeof EnderecosRoute
+    }
+    '/convite/$token': {
+      id: '/convite/$token'
+      path: '/convite/$token'
+      fullPath: '/convite/$token'
+      preLoaderRoute: typeof ConviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/selecionar-restaurante': {
       id: '/admin/selecionar-restaurante'
@@ -882,6 +902,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRecuperarSenhaRoute: AdminRecuperarSenhaRoute,
   AdminRedefinirSenhaRoute: AdminRedefinirSenhaRoute,
   AdminSelecionarRestauranteRoute: AdminSelecionarRestauranteRoute,
+  ConviteTokenRoute: ConviteTokenRoute,
   PagamentoIdRoute: PagamentoIdRoute,
   PedidoIdRoute: PedidoIdRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
