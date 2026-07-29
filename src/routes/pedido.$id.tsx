@@ -703,12 +703,16 @@ function FinishedOrderView({ order, canceled }: { order: OrderRow; canceled?: bo
         </section>
 
         {/* RESTAURANT + ITEMS */}
-        <OrderRestaurantAndItems order={order} />
-        {/* items list below is separate */}
-        <section className="hidden overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 border-b border-border/60 px-5 py-4">
+            <img
+              src={brand?.logo ?? "/placeholder.svg"}
+              alt=""
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border"
+            />
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-foreground">Restaurante</div>
+              <div className="truncate text-sm font-bold text-foreground">{brand?.name ?? "Restaurante"}</div>
               <div className="text-xs text-foreground/50">
                 {order.items.reduce((n, i) => n + i.quantity, 0)}{" "}
                 {order.items.reduce((n, i) => n + i.quantity, 0) === 1 ? "item" : "itens"}
