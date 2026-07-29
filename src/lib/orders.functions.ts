@@ -29,12 +29,35 @@ export const createOrderRecord = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     try {
-      // Freio anti-enumeração: 20 pedidos por IP por minuto é folgado para
-      // um comprador legítimo e inviabiliza scripts.
       assertRateLimit("create_order", { max: 20, windowMs: 60_000 });
+
+      const admin = await getAdmin();
+
+      // Resolve restaurantId ANTES do recompute — precisa para preços/frete/cupom reais.
+      let restaurantId = data.restaurantId ?? null;
+      if (restaurantId) {
+        const { data: r } = await admin
+          .from("restaurants")
+          .select("id")
+          .eq("id", restaurantId)
+          .maybeSingle();
+        restaurantId = r?.id ?? null;
+      }
+      if (!restaurantId && data.restaurantSlug) {
+        const { data: r, error } = await admin
+          .from("restaurants")
+          .select("id")
+          .eq("slug", data.restaurantSlug)
+          .maybeSingle();
+        if (error) throw error;
+        restaurantId = r?.id ?? null;
+      }
+      if (!restaurantId) throw new Error("Restaurante não encontrado.");
+
       // 1) Recomputa e valida totais no servidor — rejeita divergência.
-      recomputeOrderTotals({
-        items: data.items as Parameters<typeof recomputeOrderTotals>[0]["items"],
+      await recomputeOrderTotals(admin, {
+        restaurantId,
+        items: data.items as Parameters<typeof recomputeOrderTotals>[1]["items"],
         pickup: data.pickup,
         couponCode: data.couponCode ?? null,
         clientSubtotal: data.subtotal,
@@ -42,8 +65,6 @@ export const createOrderRecord = createServerFn({ method: "POST" })
         clientDiscount: data.discount,
         clientTotal: data.total,
       });
-
-      const admin = await getAdmin();
 
       // 2) Idempotência: se já existe pedido para este device+chave, devolve-o.
       if (data.idempotencyKey) {
@@ -56,25 +77,6 @@ export const createOrderRecord = createServerFn({ method: "POST" })
         if (existing) return existing;
       }
 
-      let restaurantId = data.restaurantId ?? null;
-      if (restaurantId) {
-        const { data: restaurant } = await admin
-          .from("restaurants")
-          .select("id")
-          .eq("id", restaurantId)
-          .maybeSingle();
-        restaurantId = restaurant?.id ?? null;
-      }
-      if (!restaurantId && data.restaurantSlug) {
-        const { data: restaurant, error } = await admin
-          .from("restaurants")
-          .select("id")
-          .eq("slug", data.restaurantSlug)
-          .maybeSingle();
-        if (error) throw error;
-        restaurantId = restaurant?.id ?? null;
-      }
-      if (!restaurantId) throw new Error("Restaurante não encontrado.");
 
       const shortId = "PED" + Math.floor(100000 + Math.random() * 900000);
       const insertPayload: Record<string, unknown> = {
