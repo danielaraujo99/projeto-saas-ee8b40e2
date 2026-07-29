@@ -3,7 +3,7 @@ import { createFileRoute, Link, Outlet, useParams, useNavigate } from "@tanstack
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ShoppingBag } from "lucide-react";
-import { restaurant } from "@/data/restaurant";
+import { fetchRestaurantDisplay } from "@/lib/storefront";
 import { useCart } from "@/store/cart";
 
 import {
@@ -40,9 +40,9 @@ import type { OrderRow } from "@/lib/orders-api";
 export const Route = createFileRoute("/pedido/$id")({
   head: () => ({
     meta: [
-      { title: "Acompanhamento do pedido — Restaurante Demo" },
+      { title: "Acompanhamento do pedido — MenuAtlas" },
       { name: "description", content: "Acompanhe o status do seu pedido em tempo real." },
-      { property: "og:title", content: "Acompanhamento do pedido — Restaurante Demo" },
+      { property: "og:title", content: "Acompanhamento do pedido — MenuAtlas" },
       { property: "og:description", content: "Acompanhe o status do seu pedido em tempo real." },
     ],
   }),
@@ -703,16 +703,12 @@ function FinishedOrderView({ order, canceled }: { order: OrderRow; canceled?: bo
         </section>
 
         {/* RESTAURANT + ITEMS */}
-        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+        <OrderRestaurantAndItems order={order} />
+        {/* items list below is separate */}
+        <section className="hidden overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 border-b border-border/60 px-5 py-4">
-            <img
-              src={restaurant.logo}
-              alt=""
-              loading="lazy"
-              className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-border"
-            />
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-foreground">{restaurant.name}</div>
+              <div className="truncate text-sm font-bold text-foreground">Restaurante</div>
               <div className="text-xs text-foreground/50">
                 {order.items.reduce((n, i) => n + i.quantity, 0)}{" "}
                 {order.items.reduce((n, i) => n + i.quantity, 0) === 1 ? "item" : "itens"}
