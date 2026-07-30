@@ -314,6 +314,17 @@ create policy cash_movements_insert on public.cash_movements
   );
 
 -- updated_at
+create or replace function public.orders_touch_updated_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 drop trigger if exists cash_sessions_touch on public.cash_sessions;
 create trigger cash_sessions_touch
   before update on public.cash_sessions
