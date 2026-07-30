@@ -62,9 +62,25 @@ async function fetchAdminSession(): Promise<AdminSession | null> {
     supabase.auth.getUser(),
     "Autenticação",
   );
-  if (userError) throw new Error(userError.message || "Sessão inválida.");
+  if (userError) {
+    // Sem sessão salva não é erro: é usuário deslogado — o shell redireciona
+    // para /admin/login. Só erros reais (rede/backend) devem virar exceção.
+    const msg = (userError.message || "").toLowerCase();
+    if (
+      msg.includes("auth session missing") ||
+      msg.includes("session missing") ||
+      msg.includes("session_not_found") ||
+      userError.status === 400 ||
+      userError.status === 401 ||
+      userError.status === 403
+    ) {
+      return null;
+    }
+    throw new Error(userError.message || "Sessão inválida.");
+  }
   const user = userRes.user;
   if (!user) return null;
+
 
   const { data: memberRows, error: memberError } = await withAdminTimeout(
     supabase
