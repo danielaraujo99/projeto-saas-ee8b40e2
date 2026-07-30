@@ -72,7 +72,7 @@ as $$
 declare
   _uid uuid := auth.uid();
   _clean_email text := lower(btrim(coalesce(_email, '')));
-  _token text := encode(gen_random_bytes(24), 'hex');
+  _token text := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
   _id uuid;
   _exp timestamptz := now() + interval '7 days';
 begin
