@@ -13,6 +13,8 @@ const customSupabaseAnonKey =
 export default defineConfig({
   vite: {
     define: {
+      "import.meta.env.VITE_CUSTOM_SUPABASE_URL": JSON.stringify(customSupabaseUrl),
+      "import.meta.env.VITE_CUSTOM_SUPABASE_ANON_KEY": JSON.stringify(customSupabaseAnonKey),
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(customSupabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(customSupabaseAnonKey),
     },

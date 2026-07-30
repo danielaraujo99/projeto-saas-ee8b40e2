@@ -84,13 +84,18 @@ export function AdminShell({
 }) {
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { data: session, isLoading } = useAdminSession();
+  const { data: session, isLoading, isFetching, isError, error, refetch } = useAdminSession();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [logoutOpen, setLogoutOpen] = React.useState(false);
 
+  async function signOut() {
+    await supabase.auth.signOut();
+    nav({ to: "/admin/login", search: {}, replace: true });
+  }
+
   // Guarda de rota + role
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isError) return;
     if (!session) {
       nav({ to: "/admin/login", search: { redirect: path } as never });
       return;
@@ -102,10 +107,10 @@ export function AdminShell({
     if (session.role === "cozinha" && path !== "/admin/cozinha") {
       nav({ to: "/admin/cozinha", replace: true });
     }
-  }, [session, isLoading, path, nav]);
+  }, [session, isLoading, isError, path, nav]);
 
 
-  if (isLoading || !session) {
+  if (isLoading || (isFetching && !session) || (!session && !isError)) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-50">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -113,12 +118,33 @@ export function AdminShell({
     );
   }
 
-  const items = NAV.filter((n) => n.roles.includes(session.role));
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    nav({ to: "/admin/login", search: {}, replace: true });
+  if (isError) {
+    const message = error instanceof Error ? error.message : "Não foi possível carregar sua sessão.";
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-50 px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">Não foi possível abrir o painel</h1>
+          <p className="mt-2 text-sm text-slate-500">{message}</p>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <Button type="button" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Tentar novamente
+            </Button>
+            <Button type="button" variant="outline" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
+
+  if (!session) {
+    return null;
+  }
+
+  const items = NAV.filter((n) => n.roles.includes(session.role));
 
   if (minimal) {
     return (

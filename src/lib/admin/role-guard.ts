@@ -2,6 +2,25 @@ import { redirect } from "@tanstack/react-router";
 import { supabase } from "@/lib/custom-supabase";
 import type { AdminRole } from "./session";
 
+const ADMIN_GUARD_TIMEOUT_MS = 12_000;
+
+async function withGuardTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} demorou para responder.`)),
+          ADMIN_GUARD_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Guarda de rota para o painel administrativo.
  *
@@ -26,16 +45,29 @@ export async function requireAdminRole(allowed: AdminRole[]) {
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+    error: userError,
+  } = await withGuardTimeout(supabase.auth.getUser(), "Autenticação").catch(() => ({
+    data: { user: null },
+    error: new Error("Sessão indisponível."),
+  }));
+  if (userError) {
+    throw redirect({ to: "/admin/login", search: {} });
+  }
   if (!user) {
     throw redirect({ to: "/admin/login", search: {} });
   }
 
-  const { data: memberRows } = await supabase
-    .from("restaurant_members")
-    .select("role, restaurant_id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
+  const { data: memberRows, error: memberError } = await withGuardTimeout(
+    supabase
+      .from("restaurant_members")
+      .select("role, restaurant_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+    "Permissões do painel",
+  ).catch(() => ({ data: null, error: new Error("Permissões indisponíveis.") }));
+  if (memberError) {
+    throw redirect({ to: "/admin/login", search: {} });
+  }
 
   const memberships = (memberRows ?? []) as Array<{ role: string; restaurant_id: string }>;
 

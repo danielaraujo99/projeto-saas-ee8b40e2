@@ -65,6 +65,25 @@ function friendlyLoginError(error: unknown): string {
   return text || "Não foi possível entrar agora. Tente novamente.";
 }
 
+const LOGIN_QUERY_TIMEOUT_MS = 12_000;
+
+async function withLoginTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} demorou para responder.`)),
+          LOGIN_QUERY_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function LoginPage() {
   const nav = useNavigate();
   const search = useSearch({ from: "/admin/login" });
@@ -81,37 +100,46 @@ function LoginPage() {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      if (cancelled) return;
-      if (!user) {
-        setCheckingSession(false);
-        return;
-      }
+      let navigating = false;
+      try {
+        const { data, error: userError } = await withLoginTimeout(
+          supabase.auth.getUser(),
+          "Autenticação",
+        );
+        if (userError) throw userError;
+        const user = data.user;
+        if (cancelled) return;
+        if (!user) return;
 
-      const { data: rows } = await supabase
-        .from("restaurant_members")
-        .select("restaurant_id")
-        .eq("user_id", user.id);
-      if (cancelled) return;
-      const memberships = rows ?? [];
-      if (memberships.length === 0) {
-        setSignedInEmail(user.email ?? "esta conta");
-        setEmail(user.email ?? "");
-        setCheckingSession(false);
-        return;
-      }
+        const { data: rows, error: memberError } = await withLoginTimeout(
+          supabase.from("restaurant_members").select("restaurant_id").eq("user_id", user.id),
+          "Permissões do painel",
+        );
+        if (memberError) throw memberError;
+        if (cancelled) return;
+        const memberships = rows ?? [];
+        if (memberships.length === 0) {
+          setSignedInEmail(user.email ?? "esta conta");
+          setEmail(user.email ?? "");
+          return;
+        }
 
-      const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
-      const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
-      const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
+        const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+        const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+        const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
 
-      if (memberships.length === 1 || hasValidActive) {
-        nav({ to: search.redirect || "/admin", replace: true });
-        return;
+        navigating = true;
+        if (memberships.length === 1 || hasValidActive) {
+          nav({ to: search.redirect || "/admin", replace: true });
+          return;
+        }
+        // Múltiplos restaurantes e nenhum ativo — precisa escolher explicitamente.
+        nav({ to: "/admin/selecionar-restaurante", replace: true });
+      } catch (err) {
+        console.warn("[admin-login] verificação de sessão falhou:", err);
+      } finally {
+        if (!cancelled && !navigating) setCheckingSession(false);
       }
-      // Múltiplos restaurantes e nenhum ativo — precisa escolher explicitamente.
-      nav({ to: "/admin/selecionar-restaurante", replace: true });
     })();
     return () => {
       cancelled = true;
@@ -153,29 +181,35 @@ function LoginPage() {
     }
     toast.success("Bem-vindo de volta!");
     // Decide destino com base em quantos restaurantes o usuário é membro.
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes.user;
-    if (!user) {
+    try {
+      const { data: userRes } = await withLoginTimeout(supabase.auth.getUser(), "Autenticação");
+      const user = userRes.user;
+      if (!user) {
+        nav({ to: search.redirect || "/admin", replace: true });
+        return;
+      }
+      const { data: rows, error: memberError } = await withLoginTimeout(
+        supabase.from("restaurant_members").select("restaurant_id").eq("user_id", user.id),
+        "Permissões do painel",
+      );
+      if (memberError) throw memberError;
+      const memberships = rows ?? [];
+      if (memberships.length === 0) {
+        nav({ to: "/admin/cadastro", replace: true });
+        return;
+      }
+      const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
+      const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
+      const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
+      if (memberships.length === 1 || hasValidActive) {
+        nav({ to: search.redirect || "/admin", replace: true });
+        return;
+      }
+      nav({ to: "/admin/selecionar-restaurante", replace: true });
+    } catch (err) {
+      console.warn("[admin-login] roteamento pós-login falhou:", err);
       nav({ to: search.redirect || "/admin", replace: true });
-      return;
     }
-    const { data: rows } = await supabase
-      .from("restaurant_members")
-      .select("restaurant_id")
-      .eq("user_id", user.id);
-    const memberships = rows ?? [];
-    if (memberships.length === 0) {
-      nav({ to: "/admin/cadastro", replace: true });
-      return;
-    }
-    const meta = (user.app_metadata ?? {}) as Record<string, unknown>;
-    const activeId = typeof meta.active_restaurant_id === "string" ? meta.active_restaurant_id : null;
-    const hasValidActive = !!activeId && memberships.some((m) => m.restaurant_id === activeId);
-    if (memberships.length === 1 || hasValidActive) {
-      nav({ to: search.redirect || "/admin", replace: true });
-      return;
-    }
-    nav({ to: "/admin/selecionar-restaurante", replace: true });
 
   }
 
