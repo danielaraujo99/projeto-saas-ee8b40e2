@@ -26,6 +26,24 @@ export type AdminSession = {
 };
 
 const VALID_ROLES: readonly AdminRole[] = ["admin", "caixa", "cozinha"];
+const ADMIN_QUERY_TIMEOUT_MS = 12_000;
+
+async function withAdminTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} demorou para responder.`)),
+          ADMIN_QUERY_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function parseRole(value: unknown): AdminRole | null {
   return typeof value === "string" && (VALID_ROLES as readonly string[]).includes(value)
@@ -40,15 +58,23 @@ type MembershipRow = {
 };
 
 async function fetchAdminSession(): Promise<AdminSession | null> {
-  const { data: userRes } = await supabase.auth.getUser();
+  const { data: userRes, error: userError } = await withAdminTimeout(
+    supabase.auth.getUser(),
+    "Autenticação",
+  );
+  if (userError) throw new Error(userError.message || "Sessão inválida.");
   const user = userRes.user;
   if (!user) return null;
 
-  const { data: memberRows } = await supabase
-    .from("restaurant_members")
-    .select("role, restaurant_id, restaurants!inner(id, name, slug)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
+  const { data: memberRows, error: memberError } = await withAdminTimeout(
+    supabase
+      .from("restaurant_members")
+      .select("role, restaurant_id, restaurants!inner(id, name, slug)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+    "Permissões do painel",
+  );
+  if (memberError) throw new Error(memberError.message || "Não foi possível carregar permissões.");
 
   const memberships: MembershipSummary[] = ((memberRows ?? []) as unknown as MembershipRow[])
     .map((r) => {
@@ -81,11 +107,10 @@ async function fetchAdminSession(): Promise<AdminSession | null> {
     active = memberships[0];
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile } = await withAdminTimeout(
+    supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
+    "Perfil do usuário",
+  ).catch(() => ({ data: null }));
   const profileName = profile?.name || user.email || "";
 
   if (!active) {
@@ -124,6 +149,7 @@ export function useAdminSession() {
     queryFn: fetchAdminSession,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
+    retry: false,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
@@ -133,8 +159,7 @@ export function useAdminSession() {
       if (
         event === "SIGNED_IN" ||
         event === "SIGNED_OUT" ||
-        event === "USER_UPDATED" ||
-        event === "TOKEN_REFRESHED"
+        event === "USER_UPDATED"
       ) {
         qc.invalidateQueries({ queryKey: ["admin-session"] });
       }
