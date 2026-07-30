@@ -140,6 +140,10 @@ export function AdminShell({
     );
   }
 
+  if (!session) {
+    return null;
+  }
+
   const items = NAV.filter((n) => n.roles.includes(session.role));
 
   if (minimal) {
