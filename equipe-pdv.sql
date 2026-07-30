@@ -157,6 +157,7 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
   _uid uuid := auth.uid();
   _email text := lower(coalesce(auth.jwt() ->> 'email', ''));
@@ -165,7 +166,7 @@ declare
 begin
   if _uid is null then raise exception 'not_authenticated'; end if;
 
-  select * into _inv from public.restaurant_invites where token = _token for update;
+  select * into _inv from public.restaurant_invites i where i.token = _token for update;
   if _inv.id is null then raise exception 'invite_not_found'; end if;
   if _inv.revoked_at is not null then raise exception 'invite_revoked'; end if;
   if _inv.accepted_at is not null then raise exception 'invite_already_used'; end if;
@@ -176,16 +177,13 @@ begin
   values (_uid, _inv.restaurant_id, _inv.role)
   on conflict (user_id, restaurant_id) do update set role = excluded.role;
 
-  update public.restaurant_invites
+  update public.restaurant_invites i
      set accepted_at = now(), accepted_by = _uid
-   where id = _inv.id;
+   where i.id = _inv.id;
 
   select r.slug into _slug from public.restaurants r where r.id = _inv.restaurant_id;
 
-  restaurant_id := _inv.restaurant_id;
-  role := _inv.role;
-  slug := _slug;
-  return next;
+  return query select _inv.restaurant_id, _inv.role, _slug;
 end;
 $$;
 
